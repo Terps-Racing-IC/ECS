@@ -33,6 +33,9 @@ class CanCommon(QObject):
         self.bus = None
         self.timer = None
         self.update_values_request.connect(self.update)
+    
+    def average(self, *args):
+            return (sum(args))/len(args)
 
 # Adds a value to the stored CAN values. Values are in the format of a python dict, for example {"a": 1} stores that key a = 1
     def update(self, data: dict):
@@ -102,7 +105,7 @@ class CanCommon(QObject):
                     self.update(parsed)
                 case 0x239: # Aux Engine Info
                     parsed = {
-                        "Engine Speed": int.from_bytes(message.data[0:2], "little"),
+                        "Engine_Speed": int.from_bytes(message.data[0:2], "little"),
                         "TPS": int.from_bytes(message.data[2:4], "little")/10,
                         "Lambda": message.data[4]/100, # Lambda is multiplied by 100 before being sent as it has 2 places after the decimal.
                         "Fuel": message.data[5], # Fuel PSI
@@ -117,6 +120,7 @@ class CanCommon(QObject):
                         "WSFL": message.data[5],
                         "WSRR": message.data[6],
                         "WSRL": message.data[7],
+                        "Speed": self.average(message.data[6],message.data[7])
                     }
                     self.update(parsed)
                 case 0x23B: # Misc info 2
@@ -126,14 +130,22 @@ class CanCommon(QObject):
                         "IMUZ": int.from_bytes(message.data[4:6], "little", signed=True)/100,
                     }
                     self.update(parsed)
+                case 0x23C: # TC Comp/Cut Status from ECU
+                    parsed = {
+                        "TC_Comp": int.from_bytes(message.data[0:2], "little")/10,
+                        "TC_Cut": int.from_bytes(message.data[2:4], "little")/10
+                    }
+                    self.update(parsed)
                 case 0x2B0: # Steering Angle
                     parsed = {
                         "SteerAngle": int.from_bytes(message.data[0:2], "little", signed=True)/10
                     }
+                    self.update(parsed)
                 case 0x2: # FSM State
                     parsed = {
                         "DRS": message.data[0] # FSM State, 0 = high drag, 2 = low drag
                     }
+                    self.update(parsed)
                 case _: continue            # Default case, do nothing
 
         self.snapshot_ready.emit(CanWrapper(self.values.copy()))

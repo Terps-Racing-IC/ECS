@@ -767,23 +767,12 @@ class Dashboard(QWidget):
         presets = LedController.LedPresets
         can = self.canObject
         # Cache CAN values for this function. Lots of these are reused
-        vals = {k: can.get(k) for k in ("RPM","Oil","Coolant","Battery","Fuel","Neutral","Speed","AeroMode","TC","WSRR","WSRL","WSFR","WSFL","Brightness")}
+        vals = {k: can.get(k) for k in ("RPM","Oil","Coolant","Battery","Fuel","Neutral","Speed","AeroMode","TC","WSRR","WSRL","WSFR","WSFL","TC_Comp", "TC_Cut","Brightness")}
         controller = self.ledController
-
-        def average(*args):
-            return (sum(args))/len(args)
 
         rpm = vals["RPM"]
         bat = vals["Battery"]
 
-        front_avg = average(vals["WSFR"],vals["WSFL"])
-        if front_avg > 0:
-            # Calculate the left and right slip independently to help reduce dampening from the differential.
-            slipL = vals["WSRR"]/front_avg
-            slipR = vals["WSRL"]/front_avg
-        else:
-            slipL = 0
-            slipR = 0
 
         #gear = vals["Gear"]
         all_row = [0,1,2,13,14,15]
@@ -808,7 +797,8 @@ class Dashboard(QWidget):
             ((vals["Neutral"]==1 and 3 > vals["Speed"]), [13], presets.ALERT_NEUTRAL_STATIC),
             ((vals["Neutral"]==1 and vals["Speed"] > 3), all_row, presets.ALERT_NEUTRAL_DYNAMIC),
             ((vals["AeroMode"]==2), [2], presets.ALERT_LOWDRAG),
-            ((vals["TC"] < 11 and (slipL > (vals["TC"]*0.01 + 1)) and (slipR > (vals["TC"]*0.01 + 1))), bottom_row, presets.ALERT_TC)
+            ((vals["TC_Comp"] != 0  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC)
+            #((vals["TC"] < 11 and (slipL > (vals["TC"]*0.01 + 1)) and (slipR > (vals["TC"]*0.01 + 1))), bottom_row, presets.ALERT_TC)
         ]
 
         for condition, leds, pre in rules:
