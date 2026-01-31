@@ -61,6 +61,7 @@ class CanCommon(QObject):
                     self.values.get("AeroMode", 0) & 0xFF,
                     self.values.get("AeroSens", 0) & 0xFF,
                     self.values.get("AeroBal", 0) & 0xFF,
+                    self.values.get("AeroBalShift", 0) & 0xFF,
                     self.values.get("FArb", 6) & 0xFF
                 ],
                 is_extended_id=False
@@ -125,6 +126,14 @@ class CanCommon(QObject):
                         "IMUZ": int.from_bytes(message.data[4:6], "little", signed=True)/100,
                     }
                     self.update(parsed)
+                case 0x2B0: # Steering Angle
+                    parsed = {
+                        "SteerAngle": int.from_bytes(message.data[0:2], "little", signed=True)/10
+                    }
+                case 0x2: # FSM State
+                    parsed = {
+                        "DRS": message.data[0] # FSM State, 0 = high drag, 2 = low drag
+                    }
                 case _: continue            # Default case, do nothing
 
         self.snapshot_ready.emit(CanWrapper(self.values.copy()))

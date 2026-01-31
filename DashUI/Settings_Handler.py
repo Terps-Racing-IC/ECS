@@ -40,16 +40,16 @@ class SettingsHandler:
         # name: string
         # settings: list of values to set the setting
         # It is iterable by insertion order just like a list
-        self.presets = [ # [FM, TC, AM, AS, AB, FA]
-            Preset("Default", [0,11,0,0,0,6]),
-            Preset("Accl Dry",[0,11,2,0,0,6]),
-            Preset("Accl Wet",[0,11,2,0,0,6]),
-            Preset("Skid Dry",[0,11,0,0,0,6]),
-            Preset("Skid Wet",[0,11,0,0,0,6]),
-            Preset("Ax Dry",  [0,11,1,0,0,6]),
-            Preset("Ax Wet",  [0,11,0,0,0,6]),
-            Preset("End Dry" ,[0,11,1,0,0,6]),
-            Preset("End Wet" ,[0,11,0,0,0,6]) # Maybe endurance does use active aero but with a super low sensitivity?
+        self.presets = [ # [FM, TC, AM, ASense, AB, #AShift FA]
+            Preset("Default", [0,11,0,0,0,0,6]),
+            Preset("Accl Dry",[0,11,2,0,0,0,6]),
+            Preset("Accl Wet",[0,11,2,0,0,0,6]),
+            Preset("Skid Dry",[0,11,0,0,0,0,6]),
+            Preset("Skid Wet",[0,11,0,0,0,0,6]),
+            Preset("Ax Dry",  [0,11,1,0,0,0,6]),
+            Preset("Ax Wet",  [0,11,0,0,0,0,6]),
+            Preset("End Dry" ,[0,11,1,0,0,0,6]),
+            Preset("End Wet" ,[0,11,0,0,0,0,6]) # Maybe endurance does use active aero but with a super low sensitivity?
         ]
         # Setting consists of:  
         # rule: ("Setting Name (CAN Name)", increment, min, max) 
@@ -61,6 +61,7 @@ class SettingsHandler:
             Setting(("AeroMode",1,0,2),0),
             Setting(("AeroSens",1,-2,2),0),
             Setting(("AeroBal",1,-5,5),0),
+            Setting(("AeroBalShift",1,-5,5),0)
             Setting(("FArb",1,1,10),6),
             # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY
             Setting(("Brightness",10,10,150),100), # this shouldn't be changed when the preset is selected either
