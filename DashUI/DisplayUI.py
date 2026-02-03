@@ -312,7 +312,7 @@ class Dashboard(QWidget):
                     val = f"+{val} (RICH)"
                 elif val < 0:
                     val = f"{val} (LEAN)"
-                self.pending_setting_message = ("Fuel Mix", f"{val}", "rgb(224,100,150)",1000)
+                self.pending_setting_message = ("Fuel Mix", f"{val}", "rgb(255,100,100)",1000)
             case "TC":
                 if val == 11:
                     val = "OFF"
@@ -325,7 +325,7 @@ class Dashboard(QWidget):
                 self.pending_setting_message = ("TC", f"{val}", "rgb(0,224,194)", 1000)
             case "AeroSens": 
                 text = ["Lazy","Safe","Balanced","Aggressive","Attack"]
-                self.pending_setting_message = ("Aero Sens", f"{text[val+2]}", "rgb(52,100,235)", 1000)
+                self.pending_setting_message = ("Aero Sens", f"{text[val+2]}", "rgb(52,255,52)", 1000)
             case "AeroMode": 
                 if val == 2:
                     val = "LOW DRAG"
@@ -333,11 +333,11 @@ class Dashboard(QWidget):
                     val = "AUTO"
                 else:
                     val = "OFF"
-                self.pending_setting_message = ("Aero Mode", f"{val}", "rgb(52,100,235)", 1000)
-            case "AeroBal": self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,100,235)", 1000)
-            case "AeroBalShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,100,235)", 1000)
+                self.pending_setting_message = ("Aero Mode", f"{val}", "rgb(52,255,52)", 1000)
+            case "AeroBal": self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,150,255)", 1000)
+            case "AeroBalShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,150,255)", 1000)
             case "FArb": self.pending_setting_message = ("Front Arb", f"{val}", "rgb(235,222,52)", 1000)
-            case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(220,220,220)", 1000)
+            case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(255,255,255)", 1000)
             case "Presets": self.pending_setting_message = ("Preset", f"{self.settings.presets[val].name}", "rgb(255,255,255)", 1000)
             case _: return
 
