@@ -61,7 +61,7 @@ class SettingsHandler:
             Setting(("AeroMode",1,0,2),0),
             Setting(("AeroSens",1,-2,2),0),
             Setting(("AeroBal",1,-5,5),0),
-            Setting(("AeroBalShift",1,-5,5),0)
+            Setting(("AeroBalShift",1,-5,5),0),
             Setting(("FArb",1,1,10),6),
             # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY
             Setting(("Brightness",10,10,150),100), # this shouldn't be changed when the preset is selected either
