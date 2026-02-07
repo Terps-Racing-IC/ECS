@@ -104,8 +104,11 @@ class SettingsHandler:
         self.dac_fm.raw_value = fuel_target
         '''
         #For combined DAC:
-        self.mcp4728.channel_a.value = tc_target
-        self.mcp4728.channel_b.value = fuel_target
+        try:
+            self.mcp4728.channel_a.value = tc_target
+            self.mcp4728.channel_b.value = fuel_target
+        except Exception as e:
+            print(e)
 
     def output_gear_to_ECU(self, gear, neutral, n_button):
         # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
@@ -128,7 +131,11 @@ class SettingsHandler:
             gear_target = 0
         else:
             gear_target = gear * 9362
-        self.mcp4728.channel_c.value = gear_target
+
+        try:
+            self.mcp4728.channel_c.value = gear_target
+        except Exception as e:
+            print(e)
         
     def commit_preset(self) -> tuple[str,dict]|None:
         if self.selected == len(self.settings) - 1:
