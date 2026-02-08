@@ -28,14 +28,17 @@ class SettingsHandler:
 
         self.gear = 0
 
-        self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
-        '''
-        #For individual DACs
-        self.dac_fm = MCP4725(self.i2c, address=0x62)
-        self.dac_tc = MCP4725(self.i2c, address=0x63)
-        '''
-        # For combined DAC:
-        self.mcp4728 =  MCP4728(self.i2c) # If the MCP4728 is actually an MCP4728A4, then include additional parameter 0x64
+        try:
+            self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
+            '''
+            #For individual DACs
+            self.dac_fm = MCP4725(self.i2c, address=0x62)
+            self.dac_tc = MCP4725(self.i2c, address=0x63)
+            '''
+            # For combined DAC:
+            self.mcp4728 =  MCP4728(self.i2c) # If the MCP4728 is actually an MCP4728A4, then include additional parameter 0x64
+        except Exception as e:
+            print(e)
         # Presets consist of:
         # name: string
         # settings: list of values to set the setting

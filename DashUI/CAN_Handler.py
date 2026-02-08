@@ -148,6 +148,15 @@ class CanCommon(QObject):
                     self.update(parsed)
                 case _: continue            # Default case, do nothing
 
+        # Brake bias calculation
+        fbp = self.values.get("FBrakePSI", 0)
+        rbp = self.values.get("RBrakePSI", 0)
+        bbal_calc = fbp*100/(fbp+rbp) if fbp > 50 and rbp > 50 else self.values.get("BrakeBal", 0) # Use previous brake balance if one exists
+        self.update({"BrakeBal": bbal_calc})
+
+        # Gear calculation
+
+
         self.snapshot_ready.emit(CanWrapper(self.values.copy()))
             
     # Note:

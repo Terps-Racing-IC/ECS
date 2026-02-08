@@ -20,10 +20,15 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtGui import QFont, QPainter, QColor, QCursor
 import sys
 import random
+import traceback
 from CAN_Handler import CanCommon, CanWrapper
 from LED_Handler import LedController, LedBehavior
 from Settings_Handler import SettingsHandler
-from gpiozero import RotaryEncoder, DigitalInputDevice
+from gpiozero import Device, RotaryEncoder, DigitalInputDevice
+from gpiozero.pins.mock import MockFactory
+
+#Device.pin_factory = MockFactory() # This line can be used to run the program without hardware connected. 
+# Must be commented out in order to work with hardware connected
 
 '''
 #####################################
@@ -198,18 +203,22 @@ class Dashboard(QWidget):
 
         # Create GPIO for the encoders:
         print("Setting up rotary encoders...")
-        self.encoder_adjust = RotaryEncoder(a=17, b=27, bounce_time=0.005)
-        self.encoder_adjust.when_rotated_clockwise = self.adjust_setting_cw
-        self.encoder_adjust.when_rotated_counter_clockwise = self.adjust_setting_ccw
+        try:
+            self.encoder_adjust = RotaryEncoder(a=17, b=27, bounce_time=0.005)
+            self.encoder_adjust.when_rotated_clockwise = self.adjust_setting_cw
+            self.encoder_adjust.when_rotated_counter_clockwise = self.adjust_setting_ccw
 
-        self.encoder_select = [
-            DigitalInputDevice(19, pull_up=True),
-            DigitalInputDevice(5, pull_up=True),
-            DigitalInputDevice(13, pull_up=True),
-            DigitalInputDevice(6, pull_up=True)
-        ]
+            self.encoder_select = [
+                DigitalInputDevice(19, pull_up=True),
+                DigitalInputDevice(5, pull_up=True),
+                DigitalInputDevice(13, pull_up=True),
+                DigitalInputDevice(6, pull_up=True)
+            ]
+
+            self.encoder_button_confirm = DigitalInputDevice(16, pull_up=True) # Button to confirm preset changes
+        except Exception as e:
+            print(f"Error setting up input device: {e}")
         self.settings = SettingsHandler()
-        self.encoder_button_confirm = DigitalInputDevice(16, pull_up=True) # Button to confirm preset changes
         self.pending_setting_message = None # Empty touple which will hold parameters to call the alert function
         self.settings.output_to_ECU()
 
@@ -343,6 +352,9 @@ class Dashboard(QWidget):
 
     # This function handles the absolute encoder's position.
     def select_setting(self):
+        if self.encoder_select is None or self.encoder_button_confirm is None:
+            return
+
         g3 = self.encoder_select[3].value
         g2 = self.encoder_select[2].value
         g1 = self.encoder_select[1].value
@@ -492,7 +504,7 @@ class Dashboard(QWidget):
                                         """)
         self.active_sens_subtitle.move(740, 177)
 
-        # Brake bias indicator
+        # Aero balance indicator
         self.active_bal_label = QLabel("Low-Drag", page)
         self.active_bal_label.setFont(QFont('Ubuntu', self.text_font_size, QFont.DemiBold))
         self.active_bal_label.setStyleSheet(f"""
@@ -503,7 +515,7 @@ class Dashboard(QWidget):
                                      """)
         self.active_bal_label.setAlignment(Qt.AlignCenter)
         self.active_bal_label.move(608, 195)
-        # Brake bias subtutle
+        # Aero balance subtutle
         self.active_bal_subtitle = QLabel("Aero Bal", page)
         self.active_bal_subtitle.setFont(QFont('Ubuntu', self.subtitle_size, QFont.DemiBold))
         self.active_bal_subtitle.setStyleSheet(f"""
@@ -512,6 +524,27 @@ class Dashboard(QWidget):
                                         padding: 0px 3px;
                                         """)
         self.active_bal_subtitle.move(715, 223)
+
+        # Aero migration lable
+        self.aero_shift_label = QLabel("Low-Drag", page)
+        self.aero_shift_label.setFont(QFont('Ubuntu', self.text_font_size, QFont.DemiBold))
+        self.aero_shift_label.setStyleSheet(f"""
+                                     color: {self.white_color};
+                                     background-color: {self.black_color};
+                                     border: 2px solid {self.white_color};
+                                     padding: 5px 11px; 
+                                     """)
+        self.aero_shift_label.setAlignment(Qt.AlignCenter)
+        self.aero_shift_label.move(608, 241)
+        # Aero migration lable
+        self.aero_shift_subtitle = QLabel("Aero Shft", page)
+        self.aero_shift_subtitle.setFont(QFont('Ubuntu', self.subtitle_size, QFont.DemiBold))
+        self.aero_shift_subtitle.setStyleSheet(f"""
+                                        color: {self.white_color};
+                                        background-color: "rgba(0, 0, 0, 0);
+                                        padding: 0px 3px;
+                                        """)
+        self.aero_shift_subtitle.move(707, 269)
 
 
         # LC Indicator
@@ -600,6 +633,30 @@ class Dashboard(QWidget):
                                         """)
         # self.farb_subtitle.move(60, 189)
         self.farb_subtitle.move(20, 223)
+
+        # Brake Bias Setting
+        self.bbal_label = QLabel("Low-Drag", page)
+        self.bbal_label.setFont(QFont('Ubuntu', self.text_font_size, QFont.DemiBold))
+        self.bbal_label.setStyleSheet(f"""
+                                     color: {self.white_color};
+                                     background-color: {self.black_color};
+                                     border: 2px solid {self.white_color};
+                                     padding: 5px 11px; 
+                                     """)
+        self.bbal_label.setAlignment(Qt.AlignCenter)
+        self.bbal_label.color = self.white_color
+        self.bbal_label.move(20, 241)
+
+        # Fuel Mixture Subitle (goes above due to layout issues)
+        self.bbal_subtitle = QLabel("B Bias", page)
+        self.bbal_subtitle.setFont(QFont('Ubuntu', self.subtitle_size, QFont.DemiBold))
+        self.bbal_subtitle.setStyleSheet(f"""
+                                        color: {self.white_color};
+                                        background-color: rgba(0, 0, 0, 0);
+                                        padding: 0px 3px;
+                                        """)
+        # self.farb_subtitle.move(60, 189)
+        self.bbal_subtitle.move(20, 269)
 
 
         # Battery Indicator
@@ -743,7 +800,8 @@ class Dashboard(QWidget):
             "AA_set_raw":    ("Active Aero: AUTO", (290, 140), Qt.AlignLeft, default_font),
             "fuel_raw":      ("Fuel: 100", (290, 200), Qt.AlignLeft, default_font),
             "battery_raw":   ("Battery: 13.9", (290, 230), Qt.AlignLeft, default_font),
-            "fbrake_raw":    ("Front Brake: 450", (290, 290), Qt.AlignLeft, default_font),
+            "fbrake_raw":    ("Front Brake: 450", (290, 270), Qt.AlignLeft, default_font),
+            "rbrake_raw":    ("Rear Brake: 450", (290, 300), Qt.AlignLeft, default_font),
             "steer_angle_raw":("Steering Angle: -780", (290, 350), Qt.AlignLeft, default_font),
             "DRS_raw":       ("DRS: OFF", (600, 80), Qt.AlignLeft, default_font),
             "imux_raw":      ("IMUX: -2.50", (600, 110), Qt.AlignLeft, default_font),
@@ -810,7 +868,7 @@ class Dashboard(QWidget):
         controller.update(vals["Brightness"]) # parameter affects brightness. Setting will be added for this soon.
 
     # Small function to decide which update function to show
-    def update_display(self):
+    def update_display(self):        
         match self.pages.currentIndex():
             case 1: self.update_raw()
             case 2: 
@@ -855,6 +913,7 @@ class Dashboard(QWidget):
         battery = can.get("Battery")
 
         fbpsi = can.get("FBrakePSI")
+        rbpsi = can.get("RBrakePSI")
         steer_angle = can.get("SteerAngle")
 
         can_out_status = can.get("BusOut")
@@ -890,6 +949,7 @@ class Dashboard(QWidget):
         self.battery_raw.setText(f"Battery: {battery}")
 
         self.fbrake_raw.setText(f"Front Brake: {fbpsi}")
+        self.rbrake_raw.setText(f"Rear Brake: {rbpsi}")
         self.steer_angle_raw.setText(f"Steering Angle: {steer_angle}")
 
         self.AA_set_raw.setText(f"Active Aero: {active_text}")
@@ -941,6 +1001,9 @@ class Dashboard(QWidget):
         oil_pressure = can.get("Oil")
         fuel = can.get("Fuel")
         front_brake_pressure = can.get("FBrakePSI")
+        bbal = can.get("BrakeBal")
+        bbal_text = bbal if bbal != 0 else "calc..."
+        aero_shift = can.get("AeroBalShift")
         # Brake bias here
         active_state = can.get("DRS")
         lo2 = can.get("Lambda")
@@ -970,6 +1033,8 @@ class Dashboard(QWidget):
         self.active_sens_label.setText(f"{sens_labels[active_sens+2]}") # NEEDS TO BE FUNCTION BASED
 
         self.farb_label.setText(f"{farb}")
+        self.bbal_label.setText(f"{bbal_text}")
+        self.aero_shift_label.setText(f"{aero_shift}")
         self.active_bal_label.setText(f"{active_bal}")
         
         # This logic may need to be reworked, but basically we indicate that floor clear is being used only if the engine
@@ -1282,13 +1347,17 @@ class WarnAlertWidget(QWidget):
 # Run
 if __name__ == "__main__":
     print("Started main")
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
-    app = QApplication(sys.argv)
-    dash = Dashboard()
-    print("Dashboard initialization complete. Running dash.show()")
     try: 
-        dash.show()
-    except Exception as e:
-        print(f"Failed to show dashboard: {e}")
-    sys.exit(app.exec_())
+        QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+        QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
+        app = QApplication(sys.argv)
+        dash = Dashboard()
+        print("Dashboard initialization complete. Running dash.show()")
+        try: 
+            dash.show()
+        except Exception as e:
+            print(f"Failed to show dashboard: {e}")
+        sys.exit(app.exec_())
+    except Exception:
+        with open("/home/terpsracing/dashboard/CRASH_LOG.txt", "w") as f:
+            f.write(traceback.format_exc())
