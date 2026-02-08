@@ -112,6 +112,10 @@ class CanCommon(QObject):
                         "Neutral": message.data[6]
                     }
                     self.update(parsed)
+                    # Gear calculation
+                    output_speed = self.values.get("Engine_Speed", 0)
+                    rpm = self.values.get("RPM", 0)
+                    gear_ratio = output_speed/rpm if rpm > 0 and output_speed > 0 else 0
                 case 0x23A: # Wheel and Brake Info
                     parsed = {
                         "FBrakePSI": int.from_bytes(message.data[0:2], "little")/10,
@@ -123,6 +127,11 @@ class CanCommon(QObject):
                         "Speed": self.average(message.data[6],message.data[7])
                     }
                     self.update(parsed)
+                    # Brake bias calculation
+                    fbp = self.values.get("FBrakePSI", 0)*2.025
+                    rbp = self.values.get("RBrakePSI", 0)*0.735
+                    bbal_calc = fbp*100/(fbp+rbp) if fbp > 50 and rbp > 50 else self.values.get("BrakeBal", 0) # Use previous brake balance if one exists
+                    self.update({"BrakeBal": bbal_calc})
                 case 0x23B: # Misc info 2
                     parsed = {
                         "IMUX": int.from_bytes(message.data[0:2], "little", signed=True)/100,
@@ -147,14 +156,6 @@ class CanCommon(QObject):
                     }
                     self.update(parsed)
                 case _: continue            # Default case, do nothing
-
-        # Brake bias calculation
-        fbp = self.values.get("FBrakePSI", 0)
-        rbp = self.values.get("RBrakePSI", 0)
-        bbal_calc = fbp*100/(fbp+rbp) if fbp > 50 and rbp > 50 else self.values.get("BrakeBal", 0) # Use previous brake balance if one exists
-        self.update({"BrakeBal": bbal_calc})
-
-        # Gear calculation
 
 
         self.snapshot_ready.emit(CanWrapper(self.values.copy()))
