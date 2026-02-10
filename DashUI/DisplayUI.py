@@ -1002,7 +1002,7 @@ class Dashboard(QWidget):
         fuel = can.get("Fuel")
         front_brake_pressure = can.get("FBrakePSI")
         bbal = can.get("BrakeBal")
-        bbal_text = bbal if bbal != 0 else "calc..."
+        bbal_text = f"{bbal:.1f}" if bbal != 0 else "calc..."
         aero_shift = can.get("AeroBalShift")
         # Brake bias here
         active_state = can.get("DRS")
