@@ -115,7 +115,17 @@ class CanCommon(QObject):
                     # Gear calculation
                     output_speed = self.values.get("Engine_Speed", 0)
                     rpm = self.values.get("RPM", 0)
-                    gear_ratio = output_speed/rpm if rpm > 0 and output_speed > 0 else 0
+                    gear = 0
+                    if rpm > 0 and output_speed > 0:
+                        gear_ratio = rpm/output_speed
+                        ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
+                        
+                        for i in range(0,6):
+                            if 0.97 < gear_ratio/ratios[i] < 1.03: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
+                                gear = i
+                                break
+                    self.update({"Gear": gear})
+
                 case 0x23A: # Wheel and Brake Info
                     parsed = {
                         "FBrakePSI": int.from_bytes(message.data[0:2], "little")/10,
