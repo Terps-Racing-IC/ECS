@@ -113,7 +113,7 @@ class SettingsHandler:
         except Exception as e:
             print(e)
 
-    def output_gear_to_ECU(self, gear, neutral, n_button):
+    def output_gear_to_ECU(self, gear, neutral, n_button=0):
         # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
         # If the car is in first and the neutral button is held, use a special gear voltage to the ECU that allows it to shift consistently to neutral.
         # Should increment by 9362 per position for 8 total positions with the first being 0.

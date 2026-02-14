@@ -352,6 +352,8 @@ class Dashboard(QWidget):
 
     # This function handles the absolute encoder's position.
     def select_setting(self):
+        self.settings.output_gear_to_ECU(self.canObject.get("Gear"),self.canObject.get("Neutral"))
+
         if self.encoder_select is None or self.encoder_button_confirm is None:
             return
 
