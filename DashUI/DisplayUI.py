@@ -345,7 +345,7 @@ class Dashboard(QWidget):
                 self.pending_setting_message = ("Aero Mode", f"{val}", "rgb(52,255,52)", 1000)
             case "AeroBal": self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,150,255)", 1000)
             case "AeroBalShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,150,255)", 1000)
-            case "FArb": self.pending_setting_message = ("Front Arb", f"{val}", "rgb(235,222,52)", 1000)
+            #case "FArb": self.pending_setting_message = ("Front Arb", f"{val}", "rgb(235,222,52)", 1000)
             case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(255,255,255)", 1000)
             case "Presets": self.pending_setting_message = ("Preset", f"{self.settings.presets[val].name}", "rgb(255,255,255)", 1000)
             case _: return
@@ -612,29 +612,29 @@ class Dashboard(QWidget):
         # self.fuel_mix_subtitle.move(60, 189)
         self.fuel_mix_subtitle.move(20, 177)
 
-        # Front Arb Adjustment
-        self.farb_label = QLabel("Low-Drag", page)
-        self.farb_label.setFont(QFont('Ubuntu', self.text_font_size, QFont.DemiBold))
-        self.farb_label.setStyleSheet(f"""
+        # LED brightness label
+        self.led_label = QLabel("Low-Drag", page)
+        self.led_label.setFont(QFont('Ubuntu', self.text_font_size, QFont.DemiBold))
+        self.led_label.setStyleSheet(f"""
                                      color: {self.white_color};
                                      background-color: {self.black_color};
                                      border: 2px solid {self.white_color};
                                      padding: 5px 11px; 
                                      """)
-        self.farb_label.setAlignment(Qt.AlignCenter)
-        self.farb_label.color = self.white_color
-        self.farb_label.move(20, 195)
+        self.led_label.setAlignment(Qt.AlignCenter)
+        self.led_label.color = self.white_color
+        self.led_label.move(20, 195)
 
-        # Fuel Mixture Subitle (goes above due to layout issues)
-        self.farb_subtitle = QLabel("F Arb", page)
-        self.farb_subtitle.setFont(QFont('Ubuntu', self.subtitle_size, QFont.DemiBold))
-        self.farb_subtitle.setStyleSheet(f"""
+        # LED Subtitle
+        self.led_subtitle = QLabel("LED b", page)
+        self.led_subtitle.setFont(QFont('Ubuntu', self.subtitle_size, QFont.DemiBold))
+        self.led_subtitle.setStyleSheet(f"""
                                         color: {self.white_color};
                                         background-color: rgba(0, 0, 0, 0);
                                         padding: 0px 3px;
                                         """)
-        # self.farb_subtitle.move(60, 189)
-        self.farb_subtitle.move(20, 223)
+        # self.led_subtitle.move(60, 189)
+        self.led_subtitle.move(20, 223)
 
         # Brake Bias Setting
         self.bbal_label = QLabel("Low-Drag", page)
@@ -657,7 +657,7 @@ class Dashboard(QWidget):
                                         background-color: rgba(0, 0, 0, 0);
                                         padding: 0px 3px;
                                         """)
-        # self.farb_subtitle.move(60, 189)
+        # self.led_subtitle.move(60, 189)
         self.bbal_subtitle.move(20, 269)
 
 
@@ -992,7 +992,7 @@ class Dashboard(QWidget):
         fuel_mix = can.get("FuelMix")
         fuel_text = f"+{fuel_mix}" if fuel_mix > 0 else f"{fuel_mix}"
         tc_set = can.get("TC") # TC text is handled elsewhere because the color is also updated for this specific value
-        farb = can.get("FArb")
+        ledb = can.get("Brightness")
         active_set = can.get("AeroMode")
         active_sens = can.get("AeroSens")
         active_bal = can.get("AeroBal")
@@ -1003,8 +1003,8 @@ class Dashboard(QWidget):
         oil_pressure = can.get("Oil")
         fuel = can.get("Fuel")
         front_brake_pressure = can.get("FBrakePSI")
-        bbal = can.get("BrakeBal")
-        bbal_text = f"{bbal:.1f}" if bbal != 0 else "calc..."
+        bbal = can.get("BrakeBal")/10
+        bbal_text = f"{bbal:.1f}" if bbal is not None and bbal != 0 else "calc..."
         aero_shift = can.get("AeroBalShift")
         # Brake bias here
         active_state = can.get("DRS")
@@ -1034,7 +1034,7 @@ class Dashboard(QWidget):
         sens_labels = ["Lazy","Safe","Balanc","Aggro","Attack"]
         self.active_sens_label.setText(f"{sens_labels[active_sens+2]}") # NEEDS TO BE FUNCTION BASED
 
-        self.farb_label.setText(f"{farb}")
+        self.led_label.setText(f"{ledb}%")
         self.bbal_label.setText(f"{bbal_text}")
         self.aero_shift_label.setText(f"{aero_shift}")
         self.active_bal_label.setText(f"{active_bal}")

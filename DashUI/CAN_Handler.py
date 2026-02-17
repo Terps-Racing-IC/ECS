@@ -64,8 +64,8 @@ class CanCommon(QObject):
                     self.values.get("AeroMode", 0) & 0xFF,
                     self.values.get("AeroSens", 0) & 0xFF,
                     self.values.get("AeroBal", 0) & 0xFF,
-                    self.values.get("AeroBalShift", 0) & 0xFF,
-                    self.values.get("FArb", 6) & 0xFF
+                    self.values.get("AeroBalShift", 0) & 0xFF
+                    #self.values.get("FArb", 6) & 0xFF
                 ],
                 is_extended_id=False
             )
@@ -115,8 +115,9 @@ class CanCommon(QObject):
                     # Gear calculation
                     output_speed = self.values.get("Engine_Speed", 0)
                     rpm = self.values.get("RPM", 0)
+                    neutral = self.values.get("Neutral", 0)
                     gear = 0
-                    if rpm > 0 and output_speed > 0:
+                    if rpm > 500 and output_speed > 1 and neutral != 0:
                         gear_ratio = rpm/output_speed
                         ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
                         
@@ -125,7 +126,6 @@ class CanCommon(QObject):
                                 gear = i
                                 break
                     self.update({"Gear": gear})
-
                 case 0x23A: # Wheel and Brake Info
                     parsed = {
                         "FBrakePSI": int.from_bytes(message.data[0:2], "little")/10,
@@ -137,11 +137,16 @@ class CanCommon(QObject):
                         "Speed": self.average(message.data[6],message.data[7])
                     }
                     self.update(parsed)
+                    
                     # Brake bias calculation
-                    fbp = self.values.get("FBrakePSI", 0)*2.025
-                    rbp = self.values.get("RBrakePSI", 0)*0.735
-                    bbal_calc = fbp*100/(fbp+rbp) if fbp > 50 and rbp > 50 else self.values.get("BrakeBal", 0) # Use previous brake balance if one exists
-                    self.update({"BrakeBal": bbal_calc})
+                    fbp = float(self.values.get("FBrakePSI", 0.0) or 0.0)*2.025
+                    rbp = float(self.values.get("RBrakePSI", 0.0) or 0.0)*0.735
+                    denom = (fbp+rbp)
+                    if fbp > 50 and rbp > 50 and denom != 0:
+                        bbal_calc = fbp*100/denom 
+                    else:
+                        bbal_calc = self.values.get("BrakeBal", 0.0) or 0.0 # Use previous brake balance if one exists
+                    self.update({"BrakeBal": int(bbal_calc*10)})
                 case 0x23B: # Misc info 2
                     parsed = {
                         "IMUX": int.from_bytes(message.data[0:2], "little", signed=True)/100,

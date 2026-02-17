@@ -28,32 +28,25 @@ class SettingsHandler:
 
         self.gear = 0
 
-        try:
-            self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
-            '''
-            #For individual DACs
-            self.dac_fm = MCP4725(self.i2c, address=0x62)
-            self.dac_tc = MCP4725(self.i2c, address=0x63)
-            '''
-            # For combined DAC:
-            self.mcp4728 =  MCP4728(self.i2c) # If the MCP4728 is actually an MCP4728A4, then include additional parameter 0x64
-        except Exception as e:
-            print(e)
+        self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
+        self.mcp4728 = None
+
+        self.re_init_i2c_bus()
         # Presets consist of:
         # name: string
         # settings: list of values to set the setting
         # It is iterable by insertion order just like a list
         self.presets = [ # [FM, TC, AM, ASense, AB, #AShift FA]
-            Preset("Default", [0,11,0,0,0,0,6]),
-            Preset("Accl Dry",[0,11,2,0,0,0,6]),
-            Preset("Accl Wet",[0,11,2,0,0,0,6]),
-            Preset("Skid Dry",[0,11,0,0,0,0,6]),
-            Preset("Skid Wet",[0,11,0,0,0,0,6]),
-            Preset("Ax Dry",  [0,11,1,0,0,0,6]),
-            Preset("Ax Wet",  [0,11,0,0,0,0,6]),
-            Preset("End Dry" ,[0,11,1,0,0,0,6]),
-            Preset("End Wet" ,[0,11,0,0,0,0,6]) # Maybe endurance does use active aero but with a super low sensitivity?
-        ]
+            Preset("Default", [0,11,0,0,0,0]),
+            Preset("Accl Dry",[0,11,2,0,0,0]),
+            Preset("Accl Wet",[0,11,2,0,0,0]),
+            Preset("Skid Dry",[0,11,0,0,0,0]),
+            Preset("Skid Wet",[0,11,0,0,0,0]),
+            Preset("Ax Dry",  [0,11,1,0,0,0]),
+            Preset("Ax Wet",  [0,11,0,0,0,0]),
+            Preset("End Dry" ,[0,11,1,0,0,0]),
+            Preset("End Wet" ,[0,11,0,0,0,0]) # Maybe endurance does use active aero but with a super low sensitivity?
+        ] 
         # Setting consists of:  
         # rule: ("Setting Name (CAN Name)", increment, min, max) 
         # value: current value <- this is the default value when the setting is created 
@@ -65,12 +58,31 @@ class SettingsHandler:
             Setting(("AeroSens",1,-2,2),0),
             Setting(("AeroBal",1,-5,5),0),
             Setting(("AeroBalShift",1,-5,5),0),
-            Setting(("FArb",1,1,10),6),
+            #Setting(("FArb",1,1,10),6),
             # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY
             Setting(("Brightness",10,10,150),100), # this shouldn't be changed when the preset is selected either
             Setting(("Presets",1,0,8),0), # 9 total presets. Default and then 2 per event
         ]
 
+    def re_init_i2c_bus(self):
+        try:
+            '''
+            #For individual DACs
+            self.dac_fm = MCP4725(self.i2c, address=0x62)
+            self.dac_tc = MCP4725(self.i2c, address=0x63)
+            '''
+            if not hasattr(self, 'i2c') or self.i2c is None:
+                self.i2c = busio.I2C(board.SCL, board.SDA)
+            # For combined DAC:
+            self.mcp4728 =  MCP4728(self.i2c) # If the MCP4728 is actually an MCP4728A4, then include additional parameter 0x64
+            
+            #self.mcp4728.channel_a.value = 0
+            #self.mcp4728.channel_b.value = 0
+            #self.mcp4728.channel_c.value = 0
+            self.mcp4728.channel_d.value = 0
+        except Exception as e:
+            self.mcp4728 = None
+    
     def update_selected(self,setting) -> str|None:
         self.selected = setting
         if self.selected < len(self.settings):
@@ -107,11 +119,14 @@ class SettingsHandler:
         self.dac_fm.raw_value = fuel_target
         '''
         #For combined DAC:
-        try:
-            self.mcp4728.channel_a.value = tc_target
-            self.mcp4728.channel_b.value = fuel_target
-        except Exception as e:
-            print(e)
+        if self.mcp4728 is None:
+            self.re_init_i2c_bus()
+        if self.mcp4728 is not None:
+            try:
+                self.mcp4728.channel_a.value = tc_target
+                self.mcp4728.channel_b.value = fuel_target
+            except Exception as e:
+                print(e)
 
     def output_gear_to_ECU(self, gear, neutral, n_button=0):
         # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
@@ -135,10 +150,13 @@ class SettingsHandler:
         else:
             gear_target = gear * 9362
 
-        try:
-            self.mcp4728.channel_c.value = gear_target
-        except Exception as e:
-            print(e)
+        if self.mcp4728 is None:
+            self.re_init_i2c_bus()
+        if self.mcp4728 is not None:
+            try:
+                self.mcp4728.channel_c.value = gear_target
+            except Exception as e:
+                print(e)
         
     def commit_preset(self) -> tuple[str,dict]|None:
         if self.selected == len(self.settings) - 1:
