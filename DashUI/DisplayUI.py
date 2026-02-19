@@ -221,6 +221,7 @@ class Dashboard(QWidget):
         self.settings = SettingsHandler()
         self.pending_setting_message = None # Empty touple which will hold parameters to call the alert function
         self.settings.output_to_ECU()
+        self.settings.output_gear_to_ECU(0,0)
 
         self.ui_timer = QTimer()
         # Each time the timers complete, we poll the CAN bus, 
@@ -344,7 +345,7 @@ class Dashboard(QWidget):
                     val = "OFF"
                 self.pending_setting_message = ("Aero Mode", f"{val}", "rgb(52,255,52)", 1000)
             case "AeroBal": self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,150,255)", 1000)
-            case "AeroBalShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,150,255)", 1000)
+            case "AeroShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,150,255)", 1000)
             #case "FArb": self.pending_setting_message = ("Front Arb", f"{val}", "rgb(235,222,52)", 1000)
             case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(255,255,255)", 1000)
             case "Presets": self.pending_setting_message = ("Preset", f"{self.settings.presets[val].name}", "rgb(255,255,255)", 1000)

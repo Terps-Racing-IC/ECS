@@ -26,7 +26,7 @@ class SettingsHandler:
     def __init__(self):
         self.selected = 0
 
-        self.gear = 0
+        self.gear = -1
 
         self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
         self.mcp4728 = None
@@ -57,7 +57,7 @@ class SettingsHandler:
             Setting(("AeroMode",1,0,2),0),
             Setting(("AeroSens",1,-2,2),0),
             Setting(("AeroBal",1,-5,5),0),
-            Setting(("AeroBalShift",1,-5,5),0),
+            Setting(("AeroShift",1,-5,5),0),
             #Setting(("FArb",1,1,10),6),
             # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY
             Setting(("Brightness",10,10,150),100), # this shouldn't be changed when the preset is selected either
@@ -132,31 +132,34 @@ class SettingsHandler:
         # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
         # If the car is in first and the neutral button is held, use a special gear voltage to the ECU that allows it to shift consistently to neutral.
         # Should increment by 9362 per position for 8 total positions with the first being 0.
-        '''
-        PE3 gear position possibilities
-        1 = 1st gear        4 = 4th gear
-        N/0 = Neutral       5 = 5th gear
-        2 = 2nd gear        6 = 6th gear
-        3 = 3rd gear        7 = 1st to neutral
-        '''
-        if neutral:
-            gear_target = 1*9362
-        elif not gear:
-            gear_target = 0 # If the gear cannot be calculated (gear = 0) assume first gear for cut time.
-        elif gear == 1 and n_button:
-            gear_target = 9362*7
-        elif gear == 1:
-            gear_target = 0
-        else:
-            gear_target = gear * 9362
+        if gear != self.gear:
+            '''
+            PE3 gear position possibilities
+            1 = 1st gear        4 = 4th gear
+            N/0 = Neutral       5 = 5th gear
+            2 = 2nd gear        6 = 6th gear
+            3 = 3rd gear        7 = 1st to neutral
+            '''
+            if neutral:
+                gear_target = 1*9362
+            elif not gear:
+                gear_target = 0 # If the gear cannot be calculated (gear = 0) assume first gear for cut time.
+            elif gear == 1 and n_button:
+                gear_target = 9362*7
+            elif gear == 1:
+                gear_target = 0
+            else:
+                gear_target = gear * 9362
 
-        if self.mcp4728 is None:
-            self.re_init_i2c_bus()
-        if self.mcp4728 is not None:
-            try:
-                self.mcp4728.channel_c.value = gear_target
-            except Exception as e:
-                print(e)
+            self.gear = gear
+            
+            if self.mcp4728 is None:
+                self.re_init_i2c_bus()
+            if self.mcp4728 is not None:
+                try:
+                    self.mcp4728.channel_c.value = gear_target
+                except Exception as e:
+                    print(e)
         
     def commit_preset(self) -> tuple[str,dict]|None:
         if self.selected == len(self.settings) - 1:

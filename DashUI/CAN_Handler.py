@@ -64,7 +64,7 @@ class CanCommon(QObject):
                     self.values.get("AeroMode", 0) & 0xFF,
                     self.values.get("AeroSens", 0) & 0xFF,
                     self.values.get("AeroBal", 0) & 0xFF,
-                    self.values.get("AeroBalShift", 0) & 0xFF
+                    self.values.get("AeroShift", 0) & 0xFF
                     #self.values.get("FArb", 6) & 0xFF
                 ],
                 is_extended_id=False
