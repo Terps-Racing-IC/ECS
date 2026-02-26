@@ -810,6 +810,8 @@ class Dashboard(QWidget):
             "imux_raw":      ("IMUX: -2.50", (600, 110), Qt.AlignLeft, default_font),
             "imuy_raw":      ("IMUY: -2.50", (600, 140), Qt.AlignLeft, default_font),
             "imuz_raw":      ("IMUZ: -2.50", (600, 170), Qt.AlignLeft, default_font),
+            "output_shaft_raw":("OutS: 10000", (600, 210), Qt.AlignLeft, default_font),
+            "trans_raw":     ("Ratio: 0.000", (600, 240), Qt.AlignLeft, default_font),
 
             "bus_out_status":  ("CAN Status: 0", (290, 410), Qt.AlignLeft, default_font)
         }
@@ -840,6 +842,7 @@ class Dashboard(QWidget):
         middle_row = [1,14]
         bottom_row = [0,15]
 
+        ''' IMPORTANT: EACH BLINKING BEHAVIOR MAY ONLY BE USED IN ONE RULE. IF MULTIPLE RULES USE THE SAME BLINK, THE BLINKING WILL NOT WORK'''
         rules = [
             # Tachometer rules
             ((rpm > 8500) and (rpm <= 11500), [3,12], presets.TACH_GREEN),
@@ -858,7 +861,7 @@ class Dashboard(QWidget):
             ((vals["Neutral"]==1 and 3 > vals["Speed"]), [13], presets.ALERT_NEUTRAL_STATIC),
             ((vals["Neutral"]==1 and vals["Speed"] > 3), all_row, presets.ALERT_NEUTRAL_DYNAMIC),
             ((vals["AeroMode"]==2), [2], presets.ALERT_LOWDRAG),
-            ((vals["TC_Comp"] != 0  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC)
+            ((vals["TC_Comp"] != 0  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC),
             #((vals["TC"] < 11 and (slipL > (vals["TC"]*0.01 + 1)) and (slipR > (vals["TC"]*0.01 + 1))), bottom_row, presets.ALERT_TC)
         ]
 
@@ -866,7 +869,7 @@ class Dashboard(QWidget):
             if condition:
                 controller.add_behavior(leds,pre)
             else:
-                controller.clear_behavior(leds,pre)
+               controller.clear_behavior(leds,pre)
 
         controller.update(vals["Brightness"]) # parameter affects brightness. Setting will be added for this soon.
 
@@ -911,6 +914,9 @@ class Dashboard(QWidget):
         imux = can.get("IMUX")
         imuy = can.get("IMUY")
         imuz = can.get("IMUZ")
+
+        outshaft = can.get("Engine_Speed")
+        ratio = rpm/outshaft if outshaft != 0 else 0
 
         fuel = can.get("Fuel")
         battery = can.get("Battery")
@@ -964,6 +970,10 @@ class Dashboard(QWidget):
         self.imux_raw.setText(f"Gx: {imux}")
         self.imuy_raw.setText(f"Gy: {imuy}")
         self.imuz_raw.setText(f"Gz: {imuz}")
+
+        self.output_shaft_raw.setText(f"OutS: {outshaft}")
+        self.trans_raw.setText(f"Ratio: {ratio:.3f}")
+
 
         self.bus_out_status.setText(f"CAN Status: {can_out_status}")
         

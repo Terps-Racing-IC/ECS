@@ -43,6 +43,7 @@ class LedBehavior:
         #self.enabled = False        # Is the behavior active and should be shown?
         self.last_toggle = 0.0        # Last time the frequency flipped this on/off
         self.on_state = True        # This keeps track of whether the LEDs are toggled on or off
+        self.toggled_this_loop = False
         self.default_blink=default_blink
 
 class LedController:
@@ -75,6 +76,8 @@ class LedController:
         #self.timer.start(40)          # 25 Hz update rate
         self.last_update = time.monotonic()
 
+        self.counter = 0
+
     def add_behavior(self, leds:list, behavior:LedBehavior):
         #behavior.enabled = True
         #behavior.on_state = True      # ensure starts ON
@@ -103,16 +106,13 @@ class LedController:
     def update(self, brightness):
         now = time.monotonic()
         led_colors = [(0,0,0) for _ in range(len(self.pixels))]
-
-        active = {}
-        # find active behaviors by LED and choose highest priority
-        for led in self.behaviors:
-            highest_priority = -1
-            #if not beh.enabled:
-            #    continue
-            for beh in self.behaviors.get(led, []):
-                if beh.priority > highest_priority:
-                    # handle blinking
+        
+        # 1. UPDATE GLOBAL BEHAVIOR STATES
+        # We use a set to ensure we only update each unique behavior once per frame
+        seen_behaviors = set()
+        for led_index in self.behaviors:
+            for beh in self.behaviors[led_index]:
+                if beh not in seen_behaviors:
                     if beh.freq > 0:
                         period = 1.0 / beh.freq
                         if now - beh.last_toggle >= period / 2:
@@ -120,16 +120,25 @@ class LedController:
                             beh.last_toggle = now
                     else:
                         beh.on_state = True
+                    seen_behaviors.add(beh)
 
-                    # assign color if ON and highest priority
-                    if beh.on_state:
-                        highest_priority = beh.priority
-                        active[led] = beh.color #(beh, beh.color)
+        # 2. DETERMINE WINNING COLOR PER LED
+        active_colors = {}
+        for led, behavior_list in self.behaviors.items():
+            highest_priority = -1
+            chosen_color = (0, 0, 0)
+            
+            for beh in behavior_list:
+                # Only consider the behavior if its blink state is currently "ON"
+                if beh.on_state and beh.priority > highest_priority:
+                    highest_priority = beh.priority
+                    chosen_color = beh.color
+            
+            active_colors[led] = chosen_color
 
-        # fill LEDs
-        for led, color in active.items():
+        # 3. APPLY BRIGHTNESS AND WRITE TO HARDWARE
+        for led, color in active_colors.items():
             led_colors[led] = self.apply_brightness(color, brightness)
 
         self.pixels[:] = led_colors
-        #print(f"Pixels: {led_colors}")
         self.pixels.show()
