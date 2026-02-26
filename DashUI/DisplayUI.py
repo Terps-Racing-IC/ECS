@@ -853,7 +853,7 @@ class Dashboard(QWidget):
             ((220 < vals["Coolant"] < 230), middle_row, presets.WARN_COOLANT),
             ((vals["Coolant"] > 230), middle_row, presets.WARN_COOLANT_BAD),
             ((10 > bat and rpm > 0 and 1000 >= rpm) or (12.7 > bat and (rpm == 0 or rpm > 1000)), middle_row, presets.WARN_BATTERY),
-            ((40 > vals["Fuel"] and rpm > 0), middle_row, presets.WARN_FUEL),
+            ((35 > vals["Fuel"] and rpm > 0), middle_row, presets.WARN_FUEL),
             # Alert rules
             ((vals["Neutral"]==1 and 3 > vals["Speed"]), [13], presets.ALERT_NEUTRAL_STATIC),
             ((vals["Neutral"]==1 and vals["Speed"] > 3), all_row, presets.ALERT_NEUTRAL_DYNAMIC),
@@ -1220,7 +1220,7 @@ class Dashboard(QWidget):
                                      border: 2px solid {self.white_color};
                                      """)
         # Fuel pressure
-        if fuel < 40 and rpm > 0 and self.warnings[2] == 0:
+        if fuel < 35 and rpm > 0 and self.warnings[2] == 0:
             self.warning_alert_text.buffer.add("Fuel PSI Low")
             self.warnings[2] = 1
             self.fuel_label.setStyleSheet(f"""
@@ -1246,7 +1246,7 @@ class Dashboard(QWidget):
                                      background-color: {self.black_color};
                                      border: 2px solid rgb(255, 255, 20);
                                      """)
-        elif self.warnings[3] == 1 and ((battery > 10 and rpm > 0) or (battery > 12.7 and rpm < 1)):
+        elif self.warnings[3] == 1 and ((battery > 10 and rpm > 0) or (battery >= 12.7 and rpm < 1)):
             self.warning_alert_text.buffer.discard("Battery Low")
             self.warnings[3] = 0
             self.battery_label.setStyleSheet(f"""
