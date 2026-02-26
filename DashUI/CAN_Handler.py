@@ -125,10 +125,10 @@ class CanCommon(QObject):
                         tolerance = [(1,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,1)] #(tolerance_down, tolerance_up)
                         self.rolling_gear_average.insert(0,gear_ratio)
                         self.rolling_gear_average.pop()
-                        mean = statistics.median(self.rolling_gear_average)
+                        median = statistics.median(self.rolling_gear_average)
                         
                         for i in range(0,6):
-                            if 1 - tolerance[i][1] < mean/ratios[i] < 1 + tolerance[i][0]: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
+                            if 1 - tolerance[i][1] < median/ratios[i] < 1 + tolerance[i][0]: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
                                 gear = i
                                 break
                     self.update({"Gear": gear})
