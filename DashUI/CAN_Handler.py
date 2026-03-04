@@ -34,7 +34,6 @@ class CanCommon(QObject):
         self.bus = None
         self.timer = None
         self.update_values_request.connect(self.update)
-        self.rolling_gear_average = [0.0 for _ in range(0,5)]
     
     def average(self, *args):
             return (sum(args))/len(args)
@@ -118,19 +117,18 @@ class CanCommon(QObject):
                     output_speed = self.values.get("Engine_Speed", 0)
                     rpm = self.values.get("RPM", 0)
                     neutral = self.values.get("Neutral", 0)
-                    gear = 0
+                    gear = self.values.get("Gear", 0)
                     if rpm > 500 and output_speed > 1 and neutral != 1:
                         gear_ratio = rpm/output_speed
                         ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
-                        tolerance = [(1,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,1)] #(tolerance_down, tolerance_up)
-                        self.rolling_gear_average.insert(0,gear_ratio)
-                        self.rolling_gear_average.pop()
-                        median = statistics.median(self.rolling_gear_average)
+                        tolerance = [(0.5,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,1)] #(tolerance_down, tolerance_up)
                         
                         for i in range(0,6):
-                            if 1 - tolerance[i][1] < median/ratios[i] < 1 + tolerance[i][0]: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
-                                gear = i
+                            if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
+                                gear = i + 1
                                 break
+                    else:
+                        gear = 0
                     self.update({"Gear": gear})
                     #self.update({"Gear": gear})
                 case 0x23A: # Wheel and Brake Info
