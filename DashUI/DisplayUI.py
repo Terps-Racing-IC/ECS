@@ -845,12 +845,12 @@ class Dashboard(QWidget):
         ''' IMPORTANT: EACH BLINKING BEHAVIOR MAY ONLY BE USED IN ONE RULE. IF MULTIPLE RULES USE THE SAME BLINK, THE BLINKING WILL NOT WORK'''
         rules = [
             # Tachometer rules
-            ((rpm > 8500) and (rpm <= 11500), [3,12], presets.TACH_GREEN),
-            ((rpm > 9100) and (rpm <= 11500), [4,11], presets.TACH_GREEN),
-            ((rpm > 9700) and (rpm <= 11500), [5,10], presets.TACH_YELLOW),
-            ((rpm > 10300) and (rpm <= 11500), [6,9], presets.TACH_YELLOW),
-            ((rpm > 10900) and (rpm <= 11500),[7,8], presets.TACH_RED),
-            ((rpm > 11500),list(range(3,13)), presets.TACH_BLUE),
+            ((rpm > 9500) and (rpm <= 12500), [3,12], presets.TACH_GREEN),
+            ((rpm > 10100) and (rpm <= 12500), [4,11], presets.TACH_GREEN),
+            ((rpm > 10700) and (rpm <= 12500), [5,10], presets.TACH_YELLOW),
+            ((rpm > 11300) and (rpm <= 12500), [6,9], presets.TACH_YELLOW),
+            ((rpm > 11900) and (rpm <= 12500),[7,8], presets.TACH_RED),
+            ((rpm > 12500),list(range(3,13)), presets.TACH_BLUE),
             # Warning rules
             ((0.005*vals["RPM"] > vals["Oil"]), all_row, presets.WARN_OIL),
             ((220 < vals["Coolant"] < 230), middle_row, presets.WARN_COOLANT),
@@ -1248,7 +1248,7 @@ class Dashboard(QWidget):
                                      """)
         # Battery warning. Checks for < 10V while cranking and < 12.7 while engine not running
             # v Cranking: RPM between 1 and 1000 v              v Running or sitting with engine off: RPM == 0 or RPM > 1000 v
-        if (((battery < 10) and rpm > 0 and rpm <= 1000) or ((battery < 12.7) and (rpm==0 or rpm > 1000))) and self.warnings[3] == 0:
+        if battery < 12.7 and self.warnings[3] == 0:
             self.warning_alert_text.buffer.add("Battery Low")
             self.warnings[3] = 1
             self.battery_label.setStyleSheet(f"""
@@ -1256,7 +1256,7 @@ class Dashboard(QWidget):
                                      background-color: {self.black_color};
                                      border: 2px solid rgb(255, 255, 20);
                                      """)
-        elif self.warnings[3] == 1 and ((battery > 10 and rpm > 0) or (battery >= 12.7 and rpm < 1)):
+        elif self.warnings[3] == 1 and battery >= 12.8:
             self.warning_alert_text.buffer.discard("Battery Low")
             self.warnings[3] = 0
             self.battery_label.setStyleSheet(f"""
