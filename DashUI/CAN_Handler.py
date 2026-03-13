@@ -121,10 +121,10 @@ class CanCommon(QObject):
                     if rpm > 500 and output_speed > 1 and neutral != 1:
                         gear_ratio = rpm/output_speed
                         ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
-                        tolerance = [(0.5,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,1)] #(tolerance_down, tolerance_up)
+                        tolerance = [(0.5,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,0.25)] #(tolerance_down, tolerance_up)
                         
                         for i in range(0,6):
-                            if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]: # Want a 3% tolerance because the closest ratio is 7.6%, so we want 7.6/2=3.6% margin around each gear
+                            if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
                                 gear = i + 1
                                 break
                     else:
