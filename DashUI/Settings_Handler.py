@@ -132,7 +132,7 @@ class SettingsHandler:
         # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
         # If the car is in first and the neutral button is held, use a special gear voltage to the ECU that allows it to shift consistently to neutral.
         # Should increment by 9362 per position for 8 total positions with the first being 0.
-        if gear != self.gear:
+        if gear != self.gear or neutral:
             '''
             PE3 gear position possibilities
             1 = 1st gear        4 = 4th gear
@@ -157,7 +157,7 @@ class SettingsHandler:
                 self.re_init_i2c_bus()
             if self.mcp4728 is not None:
                 try:
-                    self.mcp4728.channel_c.value = gear_target
+                    self.mcp4728.channel_d.value = gear_target
                 except Exception as e:
                     print(e)
         
