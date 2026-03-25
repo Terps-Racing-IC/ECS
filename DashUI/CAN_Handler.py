@@ -121,12 +121,12 @@ class CanCommon(QObject):
                     if rpm > 500 and output_speed > 1 and neutral != 1:
                         gear_ratio = rpm/output_speed
                         ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
-                        tolerance = [(0.5,0.18),(0.18,0.09),(0.09, 0.07),(0.07,0.05),(0.05,0.03),(0.03,0.25)] #(tolerance_down, tolerance_up)
-                        
-                        for i in range(0,6):
-                            if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
-                                gear = i + 1
-                                break
+                        tolerance = [(0.03,0.03),(0.03,0.03),(0.02, 0.02),(0.02,0.02),(0.01,0.01),(0.01,0.01)] #(tolerance_down, tolerance_up)
+                        if gear_ratio < 6: # Reject unreasonable values. This likely indicates clutch pulled
+                            for i in range(0,6): #range(max(gear-2,0),min(gear+1,6)): # Only check +/- 1 gear, helps denoise
+                                if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
+                                    gear = i + 1
+                                    break
                     else:
                         gear = 0
                     self.update({"Gear": gear})

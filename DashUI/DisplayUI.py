@@ -862,7 +862,7 @@ class Dashboard(QWidget):
             ((vals["Neutral"]==1 and 3 > vals["Speed"]), [13], presets.ALERT_NEUTRAL_STATIC),
             ((vals["Neutral"]==1 and vals["Speed"] > 3), all_row, presets.ALERT_NEUTRAL_DYNAMIC),
             ((vals["AeroMode"]==2), [2], presets.ALERT_LOWDRAG),
-            ((vals["TC_Comp"] != 0  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC),
+            ((vals["TC_Comp"] > 1  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC),
             #((vals["TC"] < 11 and (slipL > (vals["TC"]*0.01 + 1)) and (slipR > (vals["TC"]*0.01 + 1))), bottom_row, presets.ALERT_TC)
         ]
 
