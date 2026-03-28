@@ -34,6 +34,7 @@ class CanCommon(QObject):
         self.bus = None
         self.timer = None
         self.update_values_request.connect(self.update)
+        self.EWMA = 0.0
     
     def average(self, *args):
             return (sum(args))/len(args)
@@ -120,11 +121,14 @@ class CanCommon(QObject):
                     gear = self.values.get("Gear", 0)
                     if rpm > 500 and output_speed > 1 and neutral != 1:
                         gear_ratio = rpm/output_speed
-                        ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
-                        tolerance = [(0.03,0.03),(0.03,0.03),(0.02, 0.02),(0.02,0.02),(0.01,0.01),(0.01,0.01)] #(tolerance_down, tolerance_up)
+                        self.EWMA = self.EWMA*(1 - (1/8)) + gear_ratio*(1/8) # for K = 8 EWMA filtering. Approx 2-300ms response time at full engine load
+                        #ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
+                        #tolerance = [(0.03,0.03),(0.03,0.03),(0.02, 0.02),(0.02,0.02),(0.01,0.01),(0.01,0.01)] #(tolerance_down, tolerance_up)
+                        buckets = [(6,5), (4.5,4), (3.9,3.3), (3.2,2.9), (2.85,2.65), (2.6,2.4)] # Bucket tolerances, same layout as ^
                         if gear_ratio < 6: # Reject unreasonable values. This likely indicates clutch pulled
-                            for i in range(0,6): #range(max(gear-2,0),min(gear+1,6)): # Only check +/- 1 gear, helps denoise
-                                if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
+                            for i in range(0,6):
+                                if buckets[i][2] < self.EWMA < buckets[i][1]: # EWMA bucket checks
+                                #if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
                                     gear = i + 1
                                     break
                     else:
