@@ -12,14 +12,17 @@ try:
     
     # 3. Use 16-bit mid-scale (exactly 32768) to see if you get ~2.5V
     # If this works, your math/scaling was the issue.
-    print("Setting all channels to 2.5V...")
-    dac.channel_a.value = 32768
-    dac.channel_b.value = 32768
-    dac.channel_c.value = 32768
-    dac.channel_d.value = 32768
+    print("Setting all channels to 0V...")
+    dac.channel_a.value = 0
+    dac.channel_b.value = 0
+    dac.channel_c.value = 0
+    dac.channel_d.value = 0
+    print("Success!")
     
     # 4. Save this to EEPROM so they don't default to 5V on next boot
-    # dac.save_to_eeprom() 
+    print("Setting EEPROMs...")
+    dac.save_settings()
+    print("Success! Power cycle DAC to test!")
     
 except Exception as e:
     print(f"Hardware unreachable: {e}")

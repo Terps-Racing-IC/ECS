@@ -853,7 +853,7 @@ class Dashboard(QWidget):
             ((rpm > 11900) and (rpm <= 12500),[7,8], presets.TACH_RED),
             ((rpm > 12500),list(range(3,13)), presets.TACH_BLUE),
             # Warning rules
-            ((0.005*vals["RPM"] > vals["Oil"]), all_row, presets.WARN_OIL),
+            ((0.005*vals["RPM"] > vals["Oil"] and vals["Oil"] < 60), all_row, presets.WARN_OIL),
             ((220 < vals["Coolant"] < 230), middle_row, presets.WARN_COOLANT),
             ((vals["Coolant"] > 230), middle_row, presets.WARN_COOLANT_BAD),
             ((10 > bat and rpm > 0 and 1000 >= rpm) or (12.7 > bat and (rpm == 0 or rpm > 1000)), middle_row, presets.WARN_BATTERY),
@@ -1213,7 +1213,8 @@ class Dashboard(QWidget):
         # Should expect to see ~ 10 PSI per 1000 RPM to an extent (max psi around 70-90 ish)
         # Therefore 0.01*rpm should be approximately equal to oil pressure.
         # If 0.01*rpm is double or more compared to the oil pressure, we should consider the pressure low
-        if oil_pressure < 0.005*rpm and self.warnings[1] == 0:
+        # Pressure saturates at around 60PSI so the warning will trigger at very high RPM, so we will not warn above 60 psi
+        if (oil_pressure < 0.005*rpm and oil_pressure < 60) and self.warnings[1] == 0:
             self.warning_alert_text.buffer.add("Oil PSI Low")
             self.warnings[1] = 1
             self.warning_alert_background.setColor(QColor(209, 48, 27))
