@@ -154,7 +154,7 @@ class CanCommon(QObject):
                     if fbp > 50 and rbp > 50 and denom != 0:
                         bbal_calc = fbp*100/denom 
                     else:
-                        bbal_calc = self.values.get("BrakeBal", 0.0) or 0.0 # Use previous brake balance if one exists
+                        bbal_calc = self.values.get("BrakeBal", 0)/10 or 0.0 # Use previous brake balance if one exists
                     self.update({"BrakeBal": int(bbal_calc*10)})
                 case 0x23B: # Misc info 2
                     parsed = {
