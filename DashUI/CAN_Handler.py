@@ -161,6 +161,7 @@ class CanCommon(QObject):
                         "IMUX": int.from_bytes(message.data[0:2], "little", signed=True)/100,
                         "IMUY": int.from_bytes(message.data[2:4], "little", signed=True)/100,
                         "IMUZ": int.from_bytes(message.data[4:6], "little", signed=True)/100,
+                        "Odometer": int.from_bytes(message.data[6:8], "little", signed=True)/10,
                     }
                     self.update(parsed)
                 case 0x23C: # TC Comp/Cut Status from ECU

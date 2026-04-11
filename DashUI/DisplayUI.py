@@ -812,7 +812,7 @@ class Dashboard(QWidget):
             "imuy_raw":      ("IMUY: -2.50", (600, 140), Qt.AlignLeft, default_font),
             "imuz_raw":      ("IMUZ: -2.50", (600, 170), Qt.AlignLeft, default_font),
             "output_shaft_raw":("OutS: 10000", (600, 210), Qt.AlignLeft, default_font),
-            "trans_raw":     ("Ratio: 0.000", (600, 240), Qt.AlignLeft, default_font),
+            "odometer":      ("Miles: 000.0", (600, 240), Qt.AlignLeft, default_font),
 
             "bus_out_status":  ("CAN Status: 0", (290, 410), Qt.AlignLeft, default_font)
         }
@@ -917,7 +917,7 @@ class Dashboard(QWidget):
         imuz = can.get("IMUZ")
 
         outshaft = can.get("Engine_Speed")
-        ratio = rpm/outshaft if outshaft != 0 else 0
+        odo = can.get("Odometer")
 
         fuel = can.get("Fuel")
         battery = can.get("Battery")
@@ -973,7 +973,7 @@ class Dashboard(QWidget):
         self.imuz_raw.setText(f"Gz: {imuz}")
 
         self.output_shaft_raw.setText(f"OutS: {outshaft}")
-        self.trans_raw.setText(f"Ratio: {ratio:.3f}")
+        self.odometer.setText(f"Miles: {odo:.1f}")
 
 
         self.bus_out_status.setText(f"CAN Status: {can_out_status}")
