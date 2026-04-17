@@ -35,6 +35,7 @@ class CanCommon(QObject):
         self.timer = None
         self.update_values_request.connect(self.update)
         self.EWMA = 0.0
+        self.final_drive = 33/12
     
     def average(self, *args):
             return (sum(args))/len(args)
@@ -115,12 +116,17 @@ class CanCommon(QObject):
                     }
                     self.update(parsed)
                     # Gear calculation
-                    output_speed = self.values.get("Engine_Speed", 0)
+                    output_speed = self.values.get("Engine_Speed", 0)       
                     rpm = self.values.get("RPM", 0)
                     neutral = self.values.get("Neutral", 0)
                     gear = self.values.get("Gear", 0)
-                    if rpm > 500 and output_speed > 1 and neutral != 1:
-                        gear_ratio = rpm/output_speed
+                    speed = self.values.get("Speed", 0)
+                    tps = self.values.get("TPS", 0)
+                    if rpm > 500 and output_speed > 1 and speed > 1 and neutral != 1:
+                        if tps > 55:
+                            gear_ratio = rpm/(speed*(self.final_drive)/(60*3.1415*0.00026))
+                        else:
+                            gear_ratio = rpm/output_speed
                         self.EWMA = self.EWMA*(7/8) + gear_ratio*(1/8) # for K = 8 EWMA filtering. Approx 2-300ms response time at full engine load
                         #ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
                         #tolerance = [(0.03,0.03),(0.03,0.03),(0.02, 0.02),(0.02,0.02),(0.01,0.01),(0.01,0.01)] #(tolerance_down, tolerance_up)
