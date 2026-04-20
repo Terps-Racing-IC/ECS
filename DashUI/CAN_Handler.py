@@ -30,12 +30,12 @@ class CanCommon(QObject):
     def __init__(self): 
         super().__init__() # Has to initialize its parent class. Otherwise QThread has no clue wtf to do with this thing
         # Create a dict of values to store the current inputs
-        self.values = {"TC": 11, "Brightness": 100, "FArb": 6}
+        self.values = {"TC": 11, "Brightness": 100}#, "FArb": 6}
         self.bus = None
         self.timer = None
         self.update_values_request.connect(self.update)
         self.EWMA = 0.0
-        self.final_drive = 33/12
+        self.final_drive = 36/11
     
     def average(self, *args):
             return (sum(args))/len(args)
