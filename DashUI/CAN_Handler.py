@@ -123,7 +123,7 @@ class CanCommon(QObject):
                     speed = self.values.get("Speed", 0)
                     tps = self.values.get("TPS", 0)
                     if rpm > 500 and output_speed > 1 and speed > 1 and neutral != 1:
-                        if tps > 55:
+                        if tps > 20:
                             gear_ratio = rpm/(speed*(self.final_drive)/(60*3.1415*0.00026))
                         else:
                             gear_ratio = rpm/output_speed

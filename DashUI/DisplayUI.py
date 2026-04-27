@@ -276,6 +276,9 @@ class Dashboard(QWidget):
         self.alert_timer.setSingleShot(True)
         self.alert_timer.timeout.connect(self.info_alert_background.hide)
         self.alert_timer.timeout.connect(self.info_alert_text.hide)
+        self.bb_timer = QTimer()
+        self.bb_timer.setSingleShot(True)
+        self.bb_timer.timeout.connect(self.bb_advise)
 
         print("Finished main page setup")
 
@@ -314,6 +317,11 @@ class Dashboard(QWidget):
             selected, settings = commit
             self.pending_setting_message = ("Selected", selected, "rgb(255,255,255)", 2000)
             self.can_common.update_values_request.emit(settings)
+            if "wet" in selected.lower():
+                self.bb_timer.start(3000)
+
+    def bb_advise(self):
+        self.pending_setting_message = ("ADVISE", "Brake -30", "rgb(255,151,54)", 10000)
 
     def alert_caller(self,name="",val=0):
         match name:
