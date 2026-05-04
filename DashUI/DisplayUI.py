@@ -345,6 +345,8 @@ class Dashboard(QWidget):
                 text = ["Lazy","Safe","Balanced","Aggressive","Attack"]
                 self.pending_setting_message = ("Aero Sens", f"{text[val+2]}", "rgb(52,255,52)", 1000)
             case "AeroMode": 
+                if val == 3:
+                    val = "TRIM"
                 if val == 2:
                     val = "LOW DRAG"
                 elif val == 1:

@@ -52,7 +52,7 @@ class SettingsHandler:
         self.settings:list[Setting] = [
             Setting(("FuelMix",1,-10,10),0),
             Setting(("TC",-1,1,11),11), # 11 = off
-            Setting(("AeroMode",1,0,2),0),
+            Setting(("AeroMode",1,0,3),0),
             Setting(("AeroSens",1,-2,2),0),
             Setting(("AeroBal",1,-5,5),0),
             Setting(("AeroShift",1,-5,5),0),
