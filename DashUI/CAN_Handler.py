@@ -35,6 +35,7 @@ class CanCommon(QObject):
         self.timer = None
         self.update_values_request.connect(self.update)
         self.EWMA = 0.0
+        self.EWMA2 = 0.0
         self.final_drive = 36/11
     
     def average(self, *args):
@@ -159,9 +160,11 @@ class CanCommon(QObject):
                     denom = (fbp+rbp)
                     if fbp > 50 and rbp > 50 and denom != 0:
                         bbal_calc = fbp*100/denom 
-                    else:
-                        bbal_calc = self.values.get("BrakeBal", 0)/10 or 0.0 # Use previous brake balance if one exists
-                    self.update({"BrakeBal": int(bbal_calc*10)})
+                        self.EWMA2 = self.EWMA2*(7/8) + bbal_calc*10*(1/8)
+                    #else:
+                    #    bbal_calc = self.values.get("BrakeBal", 0)/10 or 0.0 # Use previous brake balance if one exists
+                    # Do not update the moving average if we're not actively braking
+                    self.update({"BrakeBal": int(self.EWMA2)})
                 case 0x23B: # Misc info 2
                     parsed = {
                         "IMUX": int.from_bytes(message.data[0:2], "little", signed=True)/100,
