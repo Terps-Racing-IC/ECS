@@ -54,7 +54,7 @@ class SettingsHandler:
             Setting(("TC",-1,1,11),11), # 11 = off
             Setting(("AeroMode",1,0,3),0),
             Setting(("AeroSens",1,-2,2),0),
-            Setting(("AeroBal",1,-5,5),0),
+            Setting(("AeroBal",1,-6,6),0),
             Setting(("AeroShift",1,-5,5),0),
             #Setting(("FArb",1,1,10),6),
             # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY

@@ -347,14 +347,23 @@ class Dashboard(QWidget):
             case "AeroMode": 
                 if val == 3:
                     val = "TRIM"
-                if val == 2:
+                elif val == 2:
                     val = "LOW DRAG"
                 elif val == 1:
                     val = "AUTO"
                 else:
                     val = "OFF"
                 self.pending_setting_message = ("Aero Mode", f"{val}", "rgb(52,255,52)", 1000)
-            case "AeroBal": self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,150,255)", 1000)
+            case "AeroBal": 
+                if val < -5:
+                    val = f"{val} (MAX R)"
+                elif val < 0:
+                    val = f"{val} (R)"
+                elif val > 5:
+                    val = f"{val} (MAX F)"
+                elif val > 0:
+                    val = f"{val} (F)"
+                self.pending_setting_message = ("Aero Bal", f"{val}", "rgb(52,150,255)", 1000)
             case "AeroShift": self.pending_setting_message = ("Aero Shift", f"{val}", "rgb(52,150,255)", 1000)
             #case "FArb": self.pending_setting_message = ("Front Arb", f"{val}", "rgb(235,222,52)", 1000)
             case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(255,255,255)", 1000)
@@ -962,6 +971,8 @@ class Dashboard(QWidget):
             active_text = "OFF"
         elif active_set == 1:
             active_text = "AUTO"
+        elif active_set == 3:
+            active_text = "TRIM"
         else:
             active_text = "LOW"
 
@@ -1036,6 +1047,8 @@ class Dashboard(QWidget):
             active_text = "OFF"
         elif active_set == 1:
             active_text = "AUTO"
+        elif active_set == 3:
+            active_text = "TRIM"
         else:
             active_text = "LOW"
 
