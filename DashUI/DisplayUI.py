@@ -14,7 +14,7 @@ For first time setup on the system
 TODO:
 '''
 
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QStackedWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QStackedWidget, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 from PyQt5.QtCore import QTimer, Qt, QRect, QObject, QThread, pyqtSignal
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtGui import QFont, QPainter, QColor, QCursor
@@ -121,6 +121,162 @@ class SnakeWidget(QWidget):
                 if self.direction != [1, 0]:
                     self.direction = [-1, 0]
 
+
+''' 
+#######################################
+
+        SETTINGS HANDLER CODE
+
+#######################################
+'''
+
+class SettingsOverlayWidget(QWidget):
+    def __init__(self, parent, handler: SettingsHandler, box_color="#111116", text_color="#000000", highlight_color="#FFCC00", text_highlight="#000000"):
+        super().__init__(parent)
+        self.handler = handler
+        
+        # 800x480 screen with 20px bounds buffer = 760x440 dimensions
+        self.setGeometry(20, 20, 760, 440)
+        self.setStyleSheet(f"background-color: {box_color}")
+        
+        # Define the font globally here so it's easily modifiable
+        self.item_font = QFont("Ubuntu", 36, QFont.Bold)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        self.show_timer = QTimer()
+        self.show_timer.setSingleShot(True)
+        self.show_timer.timeout.connect(self.hide)
+        
+        # Header setup
+        self.header_label = QLabel("SETTINGS", self)
+        self.header_label.setFont(QFont("Ubuntu", 18, QFont.Bold))
+        self.header_label.setStyleSheet("color: #CCCCCC; padding-bottom: 8px; letter-spacing: 2px;")
+        layout.addWidget(self.header_label)
+
+        # 2-Column Table Widget
+        self.table_widget = QTableWidget(self)
+        self.table_widget.setColumnCount(2)
+        self.table_widget.setFocusPolicy(Qt.NoFocus)
+        
+        # Apply the base font to the widget itself as a fallback
+        self.table_widget.setFont(self.item_font)
+        
+        self.table_widget.verticalHeader().setVisible(False)
+        self.table_widget.horizontalHeader().setVisible(False)
+        self.table_widget.setShowGrid(False)
+        self.table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        
+        self.table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.table_widget.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+        # Cleaned up CSS (font-size and font-weight removed from here since they are handled via Python)
+        self.table_widget.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {box_color};
+                border: 3px solid #999999;
+                padding: 2px;
+            }}
+            QTableWidget::item {{
+                padding-left: 20px;
+                padding-right: 20px;
+                color: {text_color};
+            }}
+            QTableWidget::item:selected {{
+                background-color: {highlight_color};
+                color: {text_highlight};
+            }}
+        """)
+        layout.addWidget(self.table_widget)
+        self.update_view()
+        self.hide()
+
+    def format_setting_value(self, name: str, value: int) -> str:
+        if name == "Presets":
+            return self.handler.presets[value].name.upper()
+        if name in ["TC"]:
+            if value == 11:
+                return "OFF"
+            elif value >= 8:
+                return f"(LOW) {value}"
+            elif value >= 4:
+                return f"(MED) {value}"
+            else:
+                return f"(HI) {value}"
+        if name in ["FuelMix"]:
+            if value > 0:
+                return f"(RICH) {value}"
+            elif value < 0:
+                return f"(LEAN) {value}"
+        if name in ["AeroMode"]:
+            strs = ["OFF", "AUTO", "LOW DRAG", "TRIM"]
+            return strs[value]
+        if name in ["AeroSens"]:
+            strs = ["BALANCED", "AGGRO", "ATTACK", "LAZY", "SAFE"]
+            return strs[value]
+        if name in ["AeroBal"]:
+            if value >= 6:
+                return "MAX F"
+            elif value > 0:
+                return f"(F) {value}"
+            elif value <= -6:
+                return "MAX R"
+            elif value < 0:
+                return f"(R) {value}"
+        return str(value)
+
+    def update_view(self):
+        self.table_widget.clearContents()
+        
+        if not self.handler.in_group_menu:
+            self.header_label.setText("SETTING GROUPS")
+            self.table_widget.setRowCount(len(self.handler.groups))
+            
+            for row, group in enumerate(self.handler.groups):
+                self.table_widget.setRowHeight(row, 89)
+                
+                name_item = QTableWidgetItem(group.name.upper())
+                name_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                name_item.setFont(self.item_font)  # Direct font injection
+                
+                dir_item = QTableWidgetItem("> ")
+                dir_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                dir_item.setFont(self.item_font)  # Direct font injection
+                
+                self.table_widget.setItem(row, 0, name_item)
+                self.table_widget.setItem(row, 1, dir_item)
+                
+            self.table_widget.setCurrentCell(self.handler.selected_group_idx, 0)
+        else:
+            active_group = self.handler.groups[self.handler.selected_group_idx]
+            self.header_label.setText(f"GROUP  >  {active_group.name.upper()}")
+            self.table_widget.setRowCount(len(active_group.settings))
+            
+            for row, setting in enumerate(active_group.settings):
+                self.table_widget.setRowHeight(row, 85)
+                
+                name = setting.rule[0]
+                display_val = self.format_setting_value(name, setting.value)
+                
+                name_item = QTableWidgetItem(name.upper())
+                name_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                name_item.setFont(self.item_font)  # Direct font injection
+                
+                val_item = QTableWidgetItem(display_val)
+                val_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                val_item.setFont(self.item_font)  # Direct font injection
+                
+                self.table_widget.setItem(row, 0, name_item)
+                self.table_widget.setItem(row, 1, val_item)
+                
+            self.table_widget.setCurrentCell(self.handler.selected_setting_idx, 0)
+
+    def show_for(self, duration=1500):
+        self.show()
+        self.show_timer.start(duration)
+
 '''
 ####################################################
 
@@ -219,7 +375,17 @@ class Dashboard(QWidget):
         except Exception as e:
             print(f"Error setting up input device: {e}")
         self.settings = SettingsHandler()
-        self.pending_setting_message = None # Empty touple which will hold parameters to call the alert function
+        self.prev_abs_enc_position = 0
+
+        self.settings_menu = SettingsOverlayWidget(
+            parent=self, 
+            handler=self.handler,
+            box_color="#151515",
+            text_color="#DDDDDD",
+            highlight_color="#0033FF",   
+            text_highlight="#DDDDDD"
+        )
+
         self.settings.output_to_ECU()
         self.settings.output_gear_to_ECU(0,0)
 
@@ -304,13 +470,17 @@ class Dashboard(QWidget):
         if adjusted is not None:
             name, val = adjusted
             self.can_common.update_values_request.emit({name: val})
-            self.alert_caller(name,val)
+            self.settings_menu.show_for(1500)
+            self.settings_menu.update_view()
+            #self.alert_caller(name,val)
     def adjust_setting_ccw(self):
         adjusted = self.settings.adjust_setting(False)
         if adjusted is not None:
             name, val = adjusted
             self.can_common.update_values_request.emit({name: val})
-            self.alert_caller(name,val)
+            self.settings_menu.show_for(1500)
+            self.settings_menu.update_view()
+            #self.alert_caller(name,val)
     def commit_preset(self):
         commit = self.settings.commit_preset()
         if commit is not None:
@@ -323,6 +493,7 @@ class Dashboard(QWidget):
     def bb_advise(self):
         self.pending_setting_message = ("ADVISE", "Brake -30", "rgb(255,151,54)", 10000)
 
+    ''' DEPRICATED
     def alert_caller(self,name="",val=0):
         match name:
             case "FuelMix": 
@@ -369,6 +540,7 @@ class Dashboard(QWidget):
             case "Brightness": self.pending_setting_message = ("Brightness", f"{val}%", "rgb(255,255,255)", 1000)
             case "Presets": self.pending_setting_message = ("Preset", f"{self.settings.presets[val].name}", "rgb(255,255,255)", 1000)
             case _: return
+    '''
 
     # This function handles the absolute encoder's position.
     def select_setting(self):
@@ -386,12 +558,16 @@ class Dashboard(QWidget):
         bin = [0, 1, 3, 2, 7, 6, 4, 5, 15, 14, 12, 13, 8, 9, 11, 10]  # Gray code will be used as an index
         button = self.encoder_button_confirm.value
 
-        if bin[gray] != self.settings.selected: # Only update if we actually changed the setting
-            setting_string = self.settings.update_selected(bin[gray])
-            if setting_string is not None:
-                self.pending_setting_message = ("Setting", setting_string, "rgb(255,255,255)", 1000)
+        if bin[gray] > self.prev_abs_enc_position or (bin[gray] == 0 and self.prev_abs_enc_position == 15): # Only update if we actually changed the setting
+            self.settings.scroll_menu(False)
+        elif bin[gray] < self.prev_abs_enc_position or (bin[gray] == 15 and self.prev_abs_enc_position == 0):
+            self.settings.scroll_menu(True)
         elif button == 1: # If misused this may cause a loop of messages, but it should be fine
             self.commit_preset()
+        if bin[gray] != self.prev_abs_enc_position:
+            self.settings_menu.show_for(1500)
+            self.settings_menu.update_view()
+            self.prev_abs_enc_position = bin[gray]
 
     ''' Page setups '''
 

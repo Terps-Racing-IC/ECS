@@ -8,13 +8,17 @@
 ##############################################
 '''
 import board, busio
-#from adafruit_mcp4725 import MCP4725
-from adafruit_mcp4728 import MCP4728
+from adafruit_mcp4728 import MCP4728 #DELETE
 
 class Setting:
     def __init__(self,rule:tuple[str,int,int,int],default:int):
         self.rule: tuple[str,int,int,int] = rule
         self.value:int = default
+
+class SettingGroup:
+    def __init__(self, name: str, settings: list[Setting]):
+        self.name: str = name
+        self.settings: list[Setting] = settings
 
 class Preset:
     def __init__(self,name:str,settings:list):
@@ -24,99 +28,124 @@ class Preset:
 
 class SettingsHandler:
     def __init__(self):
-        self.selected = 0
+        self.selected_setting_idx = 0
+        self.selected_group_idx = 0
+        self.in_group_menu = False # False = scrolling groups, True = scrolling within a group
 
+        ''' This block can be removed once CAN is the only needed interface'''
         self.gear = -1
 
         self.i2c = busio.I2C(board.SCL, board.SDA) # Physical pins 5 and 3
         self.mcp4728 = None
 
         self.re_init_i2c_bus()
+        ''''''
+
         # Presets consist of:
         # name: string
         # settings: list of values to set the setting
         # It is iterable by insertion order just like a list
+        self.preset_mapping = ["FuelMix", "TC", "AeroMode", "AeroSens", "AeroBal", "AeroShift"]
         self.presets = [ # [FM, TC, AM, ASense, AB, #AShift FA]
-            Preset("Default", [0,11,0,0,0,0]),
-            Preset("Dry Base",[0,8,1,0,0,0]),
-            Preset("Dry Accel",[0,11,2,0,0,0]),
-            Preset("Dry End", [0,8,1,0,0,0]),
-            Preset("Wet Base",[0,4,0,0,0,0]),
-            Preset("Wet Accel",[0,4,2,0,0,0]),
-            Preset("Wet End" ,[0,4,1,-2,0,0]) # Maybe endurance does use active aero but with a super low sensitivity?
+            Preset("Default",  [0 ,11,0 ,0 ,0 ,0]),
+            Preset("Dry Base", [0 ,8 ,1 ,0 ,0 ,0]),
+            Preset("Dry Accel",[0 ,11,2 ,0 ,0 ,0]),
+            Preset("Dry End",  [0 ,8 ,1 ,0 ,0 ,0]),
+            Preset("Wet Base", [0 ,4 ,0 ,0 ,0 ,0]),
+            Preset("Wet Accel",[0 ,4 ,2 ,0 ,0 ,0]),
+            Preset("Wet End" , [0 ,4 ,1 ,-2,0 ,0]) # Maybe endurance does use active aero but with a super low sensitivity?
         ] 
-        # Setting consists of:  
-        # rule: ("Setting Name (CAN Name)", increment, min, max) 
-        # value: current value <- this is the default value when the setting is created 
-        # This keeps track of the current value
-        self.settings:list[Setting] = [
-            Setting(("FuelMix",1,-10,10),0),
-            Setting(("TC",-1,1,11),11), # 11 = off
-            Setting(("AeroMode",1,0,3),0),
-            Setting(("AeroSens",1,-2,2),0),
-            Setting(("AeroBal",1,-6,6),0),
-            Setting(("AeroShift",1,-5,5),0),
-            #Setting(("FArb",1,1,10),6),
-            # SETTINGS WHICH ARE NOT CHANGED BY PRESET: PRESET MUST BE THE LAST ENTRY
-            Setting(("Brightness",10,10,150),100), # this shouldn't be changed when the preset is selected either
-            Setting(("Presets",1,0,8),0), # 9 total presets. Default and then 2 per event
+
+        ################### NEW SETTINGS CODE #######################
+        ''' There now exists multiple "setting groups" which can be added or removed. 
+        These groups are not compatible with the old system, specifically in terms of presets
+        and adjustments'''
+        self.groups = [
+            SettingGroup("Engine", [
+                Setting(("FuelMix", 1, -10, 10), 0),
+            ]),
+            SettingGroup("TC", [
+                Setting(("TC", -1, 1, 11), 11), # DELETE THIS
+                Setting(("TC_Lat", -1, 1, 11), 11),
+                Setting(("TC_Long", -1, 1, 11), 11),
+                Setting(("TC_Cut", -1, 1, 11), 11),
+                Setting(("TC_Comp", -1, 1, 11), 11),
+            ]),
+            SettingGroup("Aero", [
+                Setting(("AeroMode", 1, 0, 3), 0),
+                Setting(("AeroSens", 1, -2, 2), 0),
+                Setting(("AeroBal", 1, -6, 6), 0),
+                Setting(("AeroShift", 1, -5, 5), 0),
+            ]),
+            SettingGroup("System", [
+                Setting(("Brightness", 10, 10, 150), 100),
+                Setting(("Presets", 1, 0, 8), 0),
+            ])
         ]
 
+        # Dynamic name-based lookup table for settings. This allows the preset system to work
+        self.settings_by_name: dict[str, Setting] = {}
+        for group in self.groups:
+            for setting in group.settings:
+                self.settings_by_name[setting.rule[0]] = setting
+
+    ''' DEPRECIATED, untested new version, won't be needed on TR27'''
     def re_init_i2c_bus(self):
         try:
-            '''
-            #For individual DACs
-            self.dac_fm = MCP4725(self.i2c, address=0x62)
-            self.dac_tc = MCP4725(self.i2c, address=0x63)
-            '''
             if not hasattr(self, 'i2c') or self.i2c is None:
                 self.i2c = busio.I2C(board.SCL, board.SDA)
-            # For combined DAC:
-            self.mcp4728 =  MCP4728(self.i2c) # If the MCP4728 is actually an MCP4728A4, then include additional parameter 0x64
-            
-            #self.mcp4728.channel_a.value = 0
-            #self.mcp4728.channel_b.value = 0
-            #self.mcp4728.channel_c.value = 0
+            self.mcp4728 = MCP4728(self.i2c)
             self.mcp4728.channel_d.value = 0
         except Exception as e:
             self.mcp4728 = None
-    
-    def update_selected(self,setting) -> str|None:
-        self.selected = setting
-        if self.selected < len(self.settings):
-            return self.settings[self.selected].rule[0] 
-        else: 
-            return None
+
+
+    # --- Menu Navigation  ---
+    ''' NEW CODE '''
+    def scroll_menu(self, up: bool) -> str:
+        """Scrolls either groups or settings depending on menu depth state."""
+        step = 1 if up else -1
         
+        if not self.in_group_menu:
+            # Scroll through groups
+            self.selected_group_idx = (self.selected_group_idx + step) % len(self.groups)
+            return f"Group: {self.groups[self.selected_group_idx].name}"
+        else:
+            # Scroll through settings within the active group
+            group = self.groups[self.selected_group_idx]
+            self.selected_setting_idx = (self.selected_setting_idx + step) % len(group.settings)
+            return f"Setting: {group.settings[self.selected_setting_idx].rule[0]}"
+
+    def toggle_menu_depth(self) -> str:
+        """Simulates clicking into a group or backing out of it."""
+        if not self.in_group_menu:
+            self.in_group_menu = True
+            self.selected_setting_idx = 0
+            active_setting = self.groups[self.selected_group_idx].settings[0].rule[0]
+            return f"Entered {self.groups[self.selected_group_idx].name}. Selected: {active_setting}"
+        else:
+            self.in_group_menu = False
+            return f"Exited to Groups. Selected: {self.groups[self.selected_group_idx].name}"
+
+    def get_current_setting(self) -> Setting | None:
+        """Helper to safely fetch the currently highlighted setting object."""
+        if self.in_group_menu:
+            return self.groups[self.selected_group_idx].settings[self.selected_setting_idx]
+        return None
+    
+        
+    ''' DEPRECIATED, untested new version, won't be needed on TR27'''
     def output_to_ECU(self):
-        #return
-        fuel_setting = self.settings[0].value
-        tc_setting = self.settings[1].value # This way, setting 10 = 0, setting -10 = 20
+        fuel_setting = self.settings_by_name["FuelMix"].value
+        tc_setting = self.settings_by_name["TC"].value
 
-        #FOR INDIVIDUAL tc_target = (11 - tc_setting) * 409 # setting 10 = 409, setting 1 = 4090. OFF = 0
         tc_target = (11 - tc_setting) * 6553
-        # Map the tc setting between 0 and VDD. Position 11 is off, so make that 0V.
-        # Voltage increases and TC target slip decreases.
 
-        # Fuel setting is mapped so that 0 is neutral compensation adjustment. A small voltage offset is provided
         if fuel_setting == 0:
             fuel_target = 0
-        else: #fuel_setting > 0: # LEAN
-            #FOR INDIVIDUAL fuel_target = 195 + (195 * (10-fuel_setting))
-            fuel_target = 3120 + (3120 * (10-fuel_setting)) 
-            '''
-            195 + (195 * (10 - 10))     = 195  for 10% RICH         3120 + (3120 * (10 - 10))       = 3120 for 10%  RICH
-            195 + (195 * (10 - 1))      = 1950 for 1%  RICH         3120 + (3120 * (10 - 1))        = 31200 for 1%  RICH
-            195 + (195 * (10 - 0))      = 2145 for 0%       UNUSED  3120 + (3120 * (10 - 0))        = 34320 for 0%      UNUSED
-            195 + (195 * (10 - (-1)))   = 2340 for 1%  LEAN         3120 + (3120 * (10 - (-1)))     = 37440 for 1%  LEAN
-            195 + (195 * (10 - (-10)))  = 4095 for 10% LEAN         3120 + (3120 * (10 - (-10)))    = 65520 for 10% LEAN
-            '''
-        '''
-        #For individual DACs
-        self.dac_tc.raw_value = tc_target 
-        self.dac_fm.raw_value = fuel_target
-        '''
-        #For combined DAC:
+        else:
+            fuel_target = 3120 + (3120 * (10 - fuel_setting))
+
         if self.mcp4728 is None:
             self.re_init_i2c_bus()
         if self.mcp4728 is not None:
@@ -124,66 +153,63 @@ class SettingsHandler:
                 self.mcp4728.channel_a.value = tc_target
                 self.mcp4728.channel_b.value = fuel_target
             except Exception as e:
-                print(e)
+                print(f"DAC Error: {e}")
 
+    ''' DEPRECIATED, untested new version, won't be needed on TR27'''
     def output_gear_to_ECU(self, gear, neutral, n_button=0):
-        # Whenever the calculated gear changes or the neutral button is pressed, output this in voltage form to the ECU.
-        # If the car is in first and the neutral button is held, use a special gear voltage to the ECU that allows it to shift consistently to neutral.
-        # Should increment by 9362 per position for 8 total positions with the first being 0.
-        #if gear != self.gear or neutral:
-            '''
-            PE3 gear position possibilities
-            1 = 1st gear        4 = 4th gear
-            N/0 = Neutral       5 = 5th gear
-            2 = 2nd gear        6 = 6th gear
-            3 = 3rd gear        7 = 1st to neutral
-            '''
-            if neutral:
-                gear_target = 1*9362
-            elif not gear:
-                gear_target = 0 # If the gear cannot be calculated (gear = 0) assume first gear for cut time.
-            elif gear == 1 and n_button:
-                gear_target = 9362*7
-            elif gear == 1:
-                gear_target = 0
-            else:
-                gear_target = gear * 9362
+        if neutral:
+            gear_target = 1 * 9362
+        elif not gear:
+            gear_target = 0
+        elif gear == 1 and n_button:
+            gear_target = 9362 * 7
+        elif gear == 1:
+            gear_target = 0
+        else:
+            gear_target = gear * 9362
 
-            self.gear = gear
-            
-            if self.mcp4728 is None:
-                self.re_init_i2c_bus()
-            if self.mcp4728 is not None:
-                try:
-                    self.mcp4728.channel_d.value = gear_target
-                except Exception as e:
-                    print(e)
+        self.gear = gear
         
-    def commit_preset(self) -> tuple[str,dict]|None:
-        if self.selected == len(self.settings) - 1:
-            chosen_preset_index = self.settings[len(self.settings)-1].value # Always corresponds to "Presets"
-            result:dict[str,int] = {}
-            for index in range(len(self.settings)-2): # -2 here since we don't want to overwrite the selected preset or brightness
-                # setting v         list of presets v  last setting's value dictates preset v   setting to update v
-                self.settings[index].value = self.presets[chosen_preset_index].settings[index]
-                result.update({self.settings[index].rule[0]: self.settings[index].value})
+        if self.mcp4728 is None:
+            self.re_init_i2c_bus()
+        if self.mcp4728 is not None:
+            try:
+                self.mcp4728.channel_d.value = gear_target
+            except Exception as e:
+                print(f"Gear DAC Error: {e}")
+        
+    ''' NEW CODE '''
+    def commit_preset(self) -> tuple[str, dict] | None:
+        current_setting = self.get_current_setting()
+        if current_setting and current_setting.rule[0] == "Presets":
+            chosen_preset_index = current_setting.value
+            result: dict[str, int] = {}
+            preset_values = self.presets[chosen_preset_index].settings
+            
+            # Map values explicitly via names instead of structural indices
+            for name, val in zip(self.preset_mapping, preset_values):
+                if name in self.settings_by_name:
+                    self.settings_by_name[name].value = val
+                    result[name] = val
+                    
             return (self.presets[chosen_preset_index].name, result)
         return None
 
-    def adjust_setting(self, up: bool) -> tuple[str,int]|None:
-        if self.selected < len(self.settings):
-            setting = self.settings[self.selected]
-            name, inc, mini, maxi = setting.rule
-            curr = setting.value
-            if not up: # increment is negative if we're not going up.
-                inc = -inc
-            curr = curr + inc
+    def adjust_setting(self, up: bool) -> tuple[str, int] | None:
+        setting = self.get_current_setting()
+        if not setting:
+            return None  # Cannot adjust values while looking at the top-level Group menu
+            
+        name, inc, mini, maxi = setting.rule
+        curr = setting.value
+        if not up:
+            inc = -inc
+        curr = curr + inc
 
-            if name != "Presets":
-                setting.value = max(min(curr, maxi), mini)
-            # If we are adjusting presets, cycle to the next one:
-            else: # name == "Presets"
-                setting.value = curr % len(self.presets) # This allows presets to cycle back on themselves
-            self.output_to_ECU() # After performing the value update, make sure to re-address the DAC
-            return (name, setting.value)
-        return None
+        if name != "Presets":
+            setting.value = max(min(curr, maxi), mini)
+        else:
+            setting.value = curr % len(self.presets)
+            
+        self.output_to_ECU() # DELETE
+        return (name, setting.value)
