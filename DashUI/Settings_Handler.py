@@ -43,7 +43,7 @@ class SettingsHandler:
             Preset("Dry End", [0,8,1,0,0,0]),
             Preset("Wet Base",[0,4,0,0,0,0]),
             Preset("Wet Accel",[0,4,2,0,0,0]),
-            Preset("Wet End" ,[0,11,1,-2,0,0]) # Maybe endurance does use active aero but with a super low sensitivity?
+            Preset("Wet End" ,[0,4,1,-2,0,0]) # Maybe endurance does use active aero but with a super low sensitivity?
         ] 
         # Setting consists of:  
         # rule: ("Setting Name (CAN Name)", increment, min, max) 
