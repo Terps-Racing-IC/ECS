@@ -229,6 +229,7 @@ class SettingsOverlayWidget(QWidget):
 
     def update_view(self):
         self.table_widget.clearContents()
+        self.table_widget.clearSelection()
         
         if not self.handler.in_group_menu:
             self.header_label.setText("SETTING GROUPS")
@@ -372,14 +373,19 @@ class Dashboard(QWidget):
             ]
 
             self.encoder_button_confirm = DigitalInputDevice(16, pull_up=True) # Button to confirm preset changes
+            self.button_timer = QTimer()
+            self.button_timer.setSingleShot(True)
+
         except Exception as e:
+            self.encoder_adjust = None
+            self.encoder_select = None
             print(f"Error setting up input device: {e}")
         self.settings = SettingsHandler()
         self.prev_abs_enc_position = 0
 
         self.settings_menu = SettingsOverlayWidget(
             parent=self, 
-            handler=self.handler,
+            handler=self.settings,
             box_color="#151515",
             text_color="#DDDDDD",
             highlight_color="#0033FF",   
@@ -388,6 +394,8 @@ class Dashboard(QWidget):
 
         self.settings.output_to_ECU()
         self.settings.output_gear_to_ECU(0,0)
+        self.pending_setting_message = None
+        self.redraw_setting_menu = False
 
         self.ui_timer = QTimer()
         # Each time the timers complete, we poll the CAN bus, 
@@ -470,16 +478,14 @@ class Dashboard(QWidget):
         if adjusted is not None:
             name, val = adjusted
             self.can_common.update_values_request.emit({name: val})
-            self.settings_menu.show_for(1500)
-            self.settings_menu.update_view()
+            self.redraw_setting_menu = True
             #self.alert_caller(name,val)
     def adjust_setting_ccw(self):
         adjusted = self.settings.adjust_setting(False)
         if adjusted is not None:
             name, val = adjusted
             self.can_common.update_values_request.emit({name: val})
-            self.settings_menu.show_for(1500)
-            self.settings_menu.update_view()
+            self.redraw_setting_menu = True
             #self.alert_caller(name,val)
     def commit_preset(self):
         commit = self.settings.commit_preset()
@@ -558,17 +564,33 @@ class Dashboard(QWidget):
         bin = [0, 1, 3, 2, 7, 6, 4, 5, 15, 14, 12, 13, 8, 9, 11, 10]  # Gray code will be used as an index
         button = self.encoder_button_confirm.value
 
-        if bin[gray] > self.prev_abs_enc_position or (bin[gray] == 0 and self.prev_abs_enc_position == 15): # Only update if we actually changed the setting
-            self.settings.scroll_menu(False)
-        elif bin[gray] < self.prev_abs_enc_position or (bin[gray] == 15 and self.prev_abs_enc_position == 0):
+        if bin[gray] == 0 and self.prev_abs_enc_position == 15:
             self.settings.scroll_menu(True)
-        elif button == 1: # If misused this may cause a loop of messages, but it should be fine
-            self.commit_preset()
+            self.redraw_setting_menu = True
+        elif bin[gray] == 15 and self.prev_abs_enc_position == 0:
+            self.settings.scroll_menu(False)
+            self.redraw_setting_menu = True
+        elif bin[gray] > self.prev_abs_enc_position: # Only update if we actually changed the setting
+            self.settings.scroll_menu(True)
+            self.redraw_setting_menu = True
+        elif bin[gray] < self.prev_abs_enc_position:
+            self.settings.scroll_menu(False)
+            self.redraw_setting_menu = True
+        elif button == 1 and not self.button_timer.isActive(): # If misused this may cause a loop of messages, but it should be fine
+            group = self.settings.groups[self.settings.selected_group_idx]
+            if self.settings.in_group_menu and group.name == "System" and group.settings[self.settings.selected_setting_idx].rule[0] == "Presets":
+                self.commit_preset()
+            self.settings.toggle_menu_depth()
+            self.redraw_setting_menu = True
+            self.button_timer.start(500)
         if bin[gray] != self.prev_abs_enc_position:
-            self.settings_menu.show_for(1500)
-            self.settings_menu.update_view()
+            self.redraw_setting_menu = True
             self.prev_abs_enc_position = bin[gray]
 
+        if self.redraw_setting_menu:
+            self.settings_menu.show_for(2000)
+            self.settings_menu.update_view()
+            self.redraw_setting_menu = False
     ''' Page setups '''
 
     def init_page_main(self, page):
