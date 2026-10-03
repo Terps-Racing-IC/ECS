@@ -392,8 +392,8 @@ class Dashboard(QWidget):
             text_highlight="#DDDDDD"
         )
 
-        self.settings.output_to_ECU()
-        self.settings.output_gear_to_ECU(0,0)
+        #self.settings.output_to_ECU()
+        #self.settings.output_gear_to_ECU(0,0)
         self.pending_setting_message = None
         self.redraw_setting_menu = False
 
@@ -550,8 +550,8 @@ class Dashboard(QWidget):
 
     # This function handles the absolute encoder's position.
     def select_setting(self):
-        self.settings.output_gear_to_ECU(self.canObject.get("Gear"),self.canObject.get("Neutral"))
-        self.settings.output_to_ECU()
+        #self.settings.output_gear_to_ECU(self.canObject.get("Gear"),self.canObject.get("Neutral"))
+        #self.settings.output_to_ECU()
 
         if self.encoder_select is None or self.encoder_button_confirm is None:
             return
@@ -972,8 +972,9 @@ class Dashboard(QWidget):
         self.gear_label = QLabel("N", page)
         self.gear_label.setFont(QFont('Ubuntu', 90, QFont.Bold))
         self.gear_label.setStyleSheet(f"""
-                                     color: {self.white_color};
+                                     color: {self.black_color};
                                      border: 2px solid {self.white_color};
+                                     background-color: {self.white_color};
                                      padding: 20px 40px;
                                      """)
         self.gear_label.setAlignment(Qt.AlignCenter)
@@ -1110,7 +1111,7 @@ class Dashboard(QWidget):
         #print("updated raw")
         gear = can.get("Gear")
         neutral = can.get("Neutral")
-        gear_text = "-" if gear == 0 else f"{gear}" # - will be displayed if gear cannot be calculated by RC
+        gear_text = "-" if gear <= 0 else f"{gear}" # - will be displayed if gear cannot be calculated by RC
         if neutral == 1:
             gear_text = "N"
         speed = can.get("Speed")
@@ -1154,10 +1155,10 @@ class Dashboard(QWidget):
         self.oil_raw.setText(f"EOP: {oil_pressure}")
         self.coolant_raw.setText(f"Coolant: {coolant_temp}")
 
-        self.WSFL_raw.setText(f"{WSFL}")
-        self.WSFR_raw.setText(f"{WSFR}")
-        self.WSRL_raw.setText(f"{WSRL}")
-        self.WSRR_raw.setText(f"{WSRR}")
+        self.WSFL_raw.setText(f"{WSFL:.0f}")
+        self.WSFR_raw.setText(f"{WSFR:.0f}")
+        self.WSRL_raw.setText(f"{WSRL:.0f}")
+        self.WSRR_raw.setText(f"{WSRR:.0f}")
 
         if tc_set > 10:
             self.tc_raw.setText("TC OFF")
@@ -1217,7 +1218,7 @@ class Dashboard(QWidget):
         speed = can.get("Speed")
         gear = can.get("Gear")
         neutral = can.get("Neutral")
-        gear_text = "-" if gear == 0 else f"{gear}" # - will be displayed if gear cannot be calculated by RC
+        gear_text = "-" if gear <= 0 else f"{gear}" # - will be displayed if gear cannot be calculated by RC
         if neutral == 1:
             gear_text = "N"
         fuel_mix = can.get("FuelMix")
@@ -1259,7 +1260,7 @@ class Dashboard(QWidget):
         self.fuel_mixture_label.setText(f"{fuel_text}")
         self.coolant_label.setText(f"{coolant} F")
         self.oil_label.setText(f"{oil_pressure:.1F} PSI")
-        self.fuel_label.setText(f"{fuel} PSI")
+        self.fuel_label.setText(f"{fuel:.1f} PSI")
         # Brake bias label update
         self.tps_small.setText(f"TPS: {tps}")
         self.lambda_small.setText(f"LO2: {lo2}")
@@ -1290,15 +1291,13 @@ class Dashboard(QWidget):
         else:
             tc_color = "rgb(20, 255, 20)"
             
-        # This conditional may be unnecessary
-        if tc_color != self.tc.color:
-            self.tc.setStyleSheet(f"""
-                                        color: {tc_color};
-                                        background-color: {self.black_color};
-                                        border: 2px solid {tc_color};
-                                        padding: 0px 3px;
-                                        """)
-            self.tc.color = tc_color
+        self.tc.setStyleSheet(f"""
+                                    color: {tc_color};
+                                    background-color: {self.black_color};
+                                    border: 2px solid {tc_color};
+                                    padding: 0px 3px;
+                                    """)
+        self.tc.color = tc_color
 
         fuel_mix_color = self.fuel_mixture_label.color
         if fuel_mix > 0:
@@ -1308,14 +1307,13 @@ class Dashboard(QWidget):
         else:
             fuel_mix_color = self.white_color
 
-        if fuel_mix_color != self.fuel_mixture_label.color:
-            self.fuel_mixture_label.setStyleSheet(f"""
-                                        color: {fuel_mix_color};
-                                        background-color: rgba(0,0,0,0);
-                                        border: 2px solid {fuel_mix_color};
-                                        padding: 0px 3px;
-                                        """)
-            self.fuel_mixture_label.color = fuel_mix_color
+        self.fuel_mixture_label.setStyleSheet(f"""
+                                    color: {fuel_mix_color};
+                                    background-color: rgba(0,0,0,0);
+                                    border: 2px solid {fuel_mix_color};
+                                    padding: 0px 3px;
+                                    """)
+        self.fuel_mixture_label.color = fuel_mix_color
 
 
         # Example of how to set up an alert rule
@@ -1329,17 +1327,21 @@ class Dashboard(QWidget):
 
         # Update gear color
         if neutral == 1:
-            gear_color = "rgb(20, 20, 255)"
+            # If neutral
+            gear_bg = "rgb(20, 20, 255)" # Blue background
+            gear_txcolor = f"{self.white_color}" # White text
         else:
-            gear_color = f"{self.black_color}"
+            # If not neutral
+            gear_bg = f"{self.white_color}" # White background
+            gear_txcolor = f"{self.black_color}" # Black text
 
-        if gear_color != self.gear_color:
-            self.gear_label.setStyleSheet(f"""
-                                          background-color: {gear_color};  
-                                        color: {self.white_color};
-                                        border: 2px solid {self.white_color};
-                                        padding: 10px 20px;
-                                        """)
+        self.gear_label.setStyleSheet(f"""
+                                    background-color: {gear_bg};  
+                                    color: {gear_txcolor};
+                                    border: 2px solid {self.white_color};
+                                    padding: 10px 20px;
+                                    """)
+            
 
         # Update the RPM bar and its color
         rpm_fill_width = int((rpm / self.max_rpm) * 800)  # Match background width
@@ -1402,6 +1404,7 @@ class Dashboard(QWidget):
     def update_ambient_alert(self):
         can = self.canObject
 
+        # TODO: Start using Motec warning bits instead of these to offload computations
         coolant = can.get("Coolant")
         oil_pressure = can.get("Oil")
         rpm = can.get("RPM")

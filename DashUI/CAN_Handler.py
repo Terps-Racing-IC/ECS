@@ -1,17 +1,18 @@
 '''
 ########################################################
 
-                    CAN INTEGRATION 
+                    CAN INTEGRATION (Motec Version)
 
 ########################################################
 '''
+# TODO: TC Stuff from motec since it's not a standard message
 
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, QThread
 import can
 import statistics
 can.rc['interface'] = 'socketcan'
 can.rc['channel'] = 'can0'
-can.rc['bitrate'] = 500000
+can.rc['bitrate'] = 1000000
 from can.interface import Bus
 
 class CanWrapper:
@@ -35,7 +36,6 @@ class CanCommon(QObject):
         self.timer = None
         self.update_values_request.connect(self.update)
         self.EWMA = 0.0
-        self.EWMA2 = 0.0
         self.final_drive = 36/11
     
     def average(self, *args):
@@ -98,97 +98,122 @@ class CanCommon(QObject):
             match message.arbitration_id: 
                 # Match statement. Here we will list out all of the CAN Ids that we are using and parse the corresponding data.
                 # See the CAN Protocol in the user manual for details
-                case 0x238: # Critical Info 
+                case 0x640:
                     parsed = {
-                        "RPM": int.from_bytes(message.data[0:2], "little"), # Notice! This is the first two bytes of data! The second value 
+                        "RPM": int.from_bytes(message.data[0:2], "big"), # Notice! This is the first two bytes of data! The second value 
                                                                           # is NOT included in the index. This is indices 0 and 1
-                        "Coolant": int.from_bytes(message.data[2:4], "little", signed=True), # Technically coolant could be subzero
-                        "Oil": int.from_bytes(message.data[4:6], "little")/10, # Certain Values are multiplied by 10 before being sent. Typically if there is one place after the decimal
-                        "Battery": int.from_bytes(message.data[6:8], "little")/10,
+                        #MAP
+                        #IAT
+                        "TPS": int.from_bytes(message.data[6:8], "big")/10,
                     }
                     self.update(parsed)
-                case 0x239: # Aux Engine Info
+                case 0x641:
                     parsed = {
-                        "Engine_Speed": int.from_bytes(message.data[0:2], "little"),
-                        "TPS": int.from_bytes(message.data[2:4], "little")/10,
-                        "Lambda": message.data[4]/100, # Lambda is multiplied by 100 before being sent as it has 2 places after the decimal.
-                        "Fuel": message.data[5], # Fuel PSI
-                        "Neutral": message.data[6]
+                        # Fuel Lambda Target
+                        "Fuel": int.from_bytes(message.data[4:6], "big")*0.145038/10, # Fuel PSI
+                        # Engine Efficiency
                     }
                     self.update(parsed)
-                    # Gear calculation
-                    output_speed = self.values.get("Engine_Speed", 0)       
-                    rpm = self.values.get("RPM", 0)
-                    neutral = self.values.get("Neutral", 0)
-                    gear = self.values.get("Gear", 0)
-                    speed = self.values.get("Speed", 0)
-                    tps = self.values.get("TPS", 0)
-                    if rpm > 500 and output_speed > 1 and speed > 1 and neutral != 1:
-                        if tps > 20:
-                            gear_ratio = rpm/(speed*(self.final_drive)/(60*3.1415*0.00026))
-                        else:
-                            gear_ratio = rpm/output_speed
-                        self.EWMA = self.EWMA*(7/8) + gear_ratio*(1/8) # for K = 8 EWMA filtering. Approx 2-300ms response time at full engine load
-                        #ratios = [5.805, 4.222, 3.519, 3.048, 2.753, 2.550]
-                        #tolerance = [(0.03,0.03),(0.03,0.03),(0.02, 0.02),(0.02,0.02),(0.01,0.01),(0.01,0.01)] #(tolerance_down, tolerance_up)
-                        buckets = [(6,5), (4.5,4), (3.9,3.3), (3.2,2.9), (2.85,2.65), (2.6,2.4)] # Bucket tolerances, same layout as ^
-                        if gear_ratio < 6: # Reject unreasonable values. This likely indicates clutch pulled
-                            for i in range(0,6):
-                                if buckets[i][1] < self.EWMA < buckets[i][0]: # EWMA bucket checks
-                                #if 1 - tolerance[i][1] < gear_ratio/ratios[i] < 1 + tolerance[i][0]:
-                                    gear = i + 1
-                                    break
-                    else:
-                        gear = 0
-                    self.update({"Gear": gear})
-                    #self.update({"Gear": gear})
-                case 0x23A: # Wheel and Brake Info
+                case 0x644:
                     parsed = {
-                        "FBrakePSI": int.from_bytes(message.data[0:2], "little")/10,
-                        "RBrakePSI": int.from_bytes(message.data[2:4], "little")/10,
-                        "WSFR": message.data[4],
-                        "WSFL": message.data[5],
-                        "WSRR": message.data[6],
-                        "WSRL": message.data[7],
-                        "Speed": self.average(message.data[6],message.data[7])
+                        # A bunch of cut/comp stuff for fuel/ignition
+                        "Oil": int.from_bytes(message.data[6:8], "big")*0.145038/10,
                     }
                     self.update(parsed)
-                    
+                case 0x648:
+                    parsed = {
+                        "WSFL": (int.from_bytes(message.data[0:2], "big")/10)*0.621371, # KPH to MPH
+                        "WSFR": (int.from_bytes(message.data[2:4], "big")/10)*0.621371,
+                        "WSRL": (int.from_bytes(message.data[4:6], "big")/10)*0.621371,
+                        "WSRR": (int.from_bytes(message.data[6:8], "big")/10)*0.621371,
+                    }
+                    self.update(parsed)
+                case 0x649: # TC Comp/Cut Status from ECU
+                    parsed = {
+                        "Coolant": ((int.from_bytes(message.data[0:1], "big")/10) -40)*1.8 + 32, # C to F
+                        "Battery": int.from_bytes(message.data[5:6], "big")/10
+                    }
+                    self.update(parsed)
+                case 0x64C:
+                    warnings = int.from_bytes(message.data[5:6], "big")
+                    parsed = {
+                        "Warn_SRC" : int.from_bytes(message.data[4:5], "big"), # This tells us exactly what is wrong
+                        "Fuel_warn" : warnings&0b00000001,
+                        # Crank Pressure
+                        # Blank
+                        "Oil_warn" : warnings&0b00001000,
+                        # Oil Temp
+                        "Engine_Speed_warn" : warnings&0b00100000,
+                        # Coolant Pressure
+                        "Coolant_warn" : warnings&0b10000000,
+                        "Knock_warn" : int.from_bytes(message.data[6:7], "big")&0b10000000,
+                    }
+                    self.update(parsed)
+                
+                case 0x64D:
+                    parsed = {
+                        "Gear": (lambda x: x - 16 if x & 8 else x)(message.data[6] & 0x0F)
+                    }
+                    self.update(parsed)
+                case 0x64E:
+                    parsed = {
+                        "Neutral" : int.from_bytes(message.data[3:4], "big")&0b00000001
+                        # Also contains pit and launch switch states
+                    }
+                    self.update(parsed)
+                # 0x650: Driver switch info
+                case 0x651:
+                    parsed = {
+                        "Lambda" : int.from_bytes(message.data[0:1], "big")/100
+                    }
+                case 0x655:
+                    parsed = {
+                        "FBrakePSI" : int.from_bytes(message.data[0:2], "big", signed=True)*0.145038,
+                        "RBrakePSI" : int.from_bytes(message.data[2:4], "big", signed=True)*0.145038,
+                    }
+                    self.update(parsed)
                     # Brake bias calculation
                     fbp = float(self.values.get("FBrakePSI", 0.0) or 0.0)*2.025
                     rbp = float(self.values.get("RBrakePSI", 0.0) or 0.0)*0.735
                     denom = (fbp+rbp)
                     if fbp > 50 and rbp > 50 and denom != 0:
                         bbal_calc = fbp*100/denom 
-                        self.EWMA2 = self.EWMA2*(7/8) + bbal_calc*10*(1/8)
+                        self.EWMA = self.EWMA*(7/8) + bbal_calc*10*(1/8)
                     #else:
                     #    bbal_calc = self.values.get("BrakeBal", 0)/10 or 0.0 # Use previous brake balance if one exists
                     # Do not update the moving average if we're not actively braking
-                    self.update({"BrakeBal": int(self.EWMA2)})
-                case 0x23B: # Misc info 2
+                    self.update({"BrakeBal": int(self.EWMA)})
+                case 0x656:
                     parsed = {
-                        "IMUX": int.from_bytes(message.data[0:2], "little", signed=True)/100,
-                        "IMUY": int.from_bytes(message.data[2:4], "little", signed=True)/100,
-                        "IMUZ": int.from_bytes(message.data[4:6], "little", signed=True)/100,
-                        "Odometer": int.from_bytes(message.data[6:8], "little", signed=True)/10,
+                        "SteerAngle" : int.from_bytes(message.data[0:2], "big", signed=True)/10
                     }
                     self.update(parsed)
-                case 0x23C: # TC Comp/Cut Status from ECU
+                case 0x657:
                     parsed = {
-                        "TC_Comp": int.from_bytes(message.data[0:2], "little")/10,
-                        "TC_Cut": int.from_bytes(message.data[2:4], "little")/10
+                        "Engine_Speed" : int.from_bytes(message.data[6:8], "big")
                     }
                     self.update(parsed)
-                case 0x2B0: # Steering Angle
+                case 0x658:
                     parsed = {
-                        "SteerAngle": int.from_bytes(message.data[0:2], "little", signed=True)/10
+                        "IMUY" : int.from_bytes(message.data[0:2], "big", signed=True)/1000,
+                        "IMUX" : int.from_bytes(message.data[2:4], "big", signed=True)/1000,
+                        "IMUZ" : int.from_bytes(message.data[4:6], "big", signed=True)/1000,
                     }
                     self.update(parsed)
-                case 0x2: # FSM State
+                case 0x659:
                     parsed = {
-                        "DRS": message.data[0] # FSM State, 0 = high drag, 2 = low drag
+                        "Speed" : int.from_bytes(message.data[4:6], "big", signed=True)/10 # KPH, 
+                        # fastest front wheel speed unless locked, in which case GPS speed is used
                     }
                     self.update(parsed)
+                # 0x65B: Lap time info
+                # 0x65C: Extra driver rotary switch info
+                case 0x6B1:
+                    parsed = {
+                        "Trans_Slip_warn" : int.from_bytes(message.data[6:7], "big")&0b10000000 # Triggered if RPM too much relatiev to output
+                    }
+                    self.update(parsed)
+
                 case _: continue            # Default case, do nothing
 
 
