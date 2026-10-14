@@ -81,9 +81,18 @@ class CanCommon(QObject):
                 ],
                 is_extended_id=False
             )
+            msg_300 = can.Message(
+                arbitration_id=0x300,
+                data=[
+                    self.values.get("RWS_Mode", 0) & 0xFF,
+                    self.values.get("RWS_Fixed_Gain", 0) & 0xFF
+                ],
+                is_extended_id=False
+            )
             try:
                 self.bus.send(msg_240)
                 self.bus.send(msg_241)
+                self.bus.send(msg_300)
                 self.values.update({"BusOut":1})
             except can.CanError:
                 self.values.update({"BusOut":0})

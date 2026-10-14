@@ -225,6 +225,21 @@ class SettingsOverlayWidget(QWidget):
                 return "MAX R"
             elif value < 0:
                 return f"(R) {value}"
+        if name in ["RWSMode"]:
+            match value:
+                case 0:
+                    return "SPD GAIN"
+                case 1:
+                    return "FIXED GAIN"
+                case 2:
+                    return "OFF"
+        if name in ["RWSFxdGain"]:
+            if value > 0:
+                return f"{int(value/10)} [IN]"
+            elif value < 0:
+                return f"{int(value/10)} [CTR]"
+            else:
+                return "LOCKED"
         return str(value)
 
     def update_view(self):

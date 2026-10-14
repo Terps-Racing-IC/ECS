@@ -10,17 +10,35 @@
 import board, busio
 from adafruit_mcp4728 import MCP4728 #DELETE
 
+
 class Setting:
+    """ 
+    Represents a setting which can be altered by the driver
+    
+    rule is a tuple of [name, increment, min, max]
+    default is the default value of the setting
+    """
     def __init__(self,rule:tuple[str,int,int,int],default:int):
         self.rule: tuple[str,int,int,int] = rule
         self.value:int = default
 
 class SettingGroup:
+    """
+    Represents a group of settings which will apear in a single page in the settings window
+
+    name is the group name for display in the groups view of the settings window
+    settings is a list of settings objects to be tracked within the group
+    """
     def __init__(self, name: str, settings: list[Setting]):
         self.name: str = name
         self.settings: list[Setting] = settings
 
 class Preset:
+    """
+    Represents a settings preset
+
+    See the preset mapping in the SettingsHandler init for how to use
+    """
     def __init__(self,name:str,settings:list):
         self.name:str = name
         self.settings:list = settings
@@ -76,6 +94,10 @@ class SettingsHandler:
                 Setting(("AeroSens", 1, -2, 2), 0),
                 Setting(("AeroBal", 1, -6, 6), 0),
                 Setting(("AeroShift", 1, -5, 5), 0),
+            ]),
+            SettingGroup("RWS", [
+                Setting(("RWSMode", 1, 0, 2), 2),
+                Setting(("RWSFxdGain", 1, -10, 10), 0) # Gain is 10x here. So gain of 1 = 0.1 on the controller
             ]),
             SettingGroup("System", [
                 Setting(("Brightness", 10, 10, 150), 100),
