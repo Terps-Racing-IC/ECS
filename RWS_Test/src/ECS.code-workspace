@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "\\\\wsl.localhost\\Ubuntu\\home\\egoff\\ECS"
+		},
+		{
+			"name": "RWS_Test",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
