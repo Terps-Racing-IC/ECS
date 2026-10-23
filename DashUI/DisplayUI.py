@@ -235,9 +235,9 @@ class SettingsOverlayWidget(QWidget):
                     return "OFF"
         if name in ["RWSFxdGain"]:
             if value > 0:
-                return f"{int(value/10)} [IN]"
+                return f"{(value/10):.1f} [IN]"
             elif value < 0:
-                return f"{int(value/10)} [CTR]"
+                return f"{(value/10):.1f} [CTR]"
             else:
                 return "LOCKED"
         return str(value)

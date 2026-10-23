@@ -139,7 +139,7 @@ class CanCommon(QObject):
                     self.update(parsed)
                 case 0x649: # TC Comp/Cut Status from ECU
                     parsed = {
-                        "Coolant": ((int.from_bytes(message.data[0:1], "big")/10) -40)*1.8 + 32, # C to F
+                        "Coolant": int((int.from_bytes(message.data[0:1], "big") -40)*1.8 + 32), # C to F
                         "Battery": int.from_bytes(message.data[5:6], "big")/10
                     }
                     self.update(parsed)
