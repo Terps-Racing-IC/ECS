@@ -330,7 +330,7 @@ void steer_speed_gain() {
   // ADD A CHECK FOR IF THE OVERRIDE PADDLES HAVE BEEN ACTUATED. IF SO AND IF MODE IS NOT OFF THEN IGNORE GAIN AND
   // COMMAND WHEELS TO ABSOLUTE PADDLE POSITION INSTEAD
 
-  switch (mode) { // Note: possible snapping when switching from speed gain to fixed gain
+  switch (mode) {
     case RWSMode::SPD_GAIN:
       gain = get_2d_gain(speed, steerNormalized);
       break;
