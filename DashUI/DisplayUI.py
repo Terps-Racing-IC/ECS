@@ -26,6 +26,7 @@ from LED_Handler import LedController, LedBehavior
 from Settings_Handler import SettingsHandler
 from gpiozero import Device, RotaryEncoder, DigitalInputDevice
 from gpiozero.pins.mock import MockFactory
+import time
 
 #Device.pin_factory = MockFactory() # This line can be used to run the program without hardware connected. 
 # Must be commented out in order to work with hardware connected
@@ -410,6 +411,7 @@ class Dashboard(QWidget):
         #self.settings.output_to_ECU()
         #self.settings.output_gear_to_ECU(0,0)
         self.pending_setting_message = None
+        self.p2c_message_no = 0
         self.redraw_setting_menu = False
 
         self.ui_timer = QTimer()
@@ -441,6 +443,7 @@ class Dashboard(QWidget):
         # 0: coolant, 1: oil pressure, 2: Fuel, 3: Battery
         self.warning_alert_text.buffer = set()
         self.warning_alert_text.shown = False
+        self.fault_codes = {}
 
         # Info alert: full screen rectangle
         self.info_alert_background = QWidget(self)
@@ -1425,6 +1428,18 @@ class Dashboard(QWidget):
         rpm = can.get("RPM")
         fuel = can.get("Fuel")
         battery = can.get("Battery")
+        warn_src = can.get("Warn_SRC")
+        if warn_src != 0:
+            code_text = self.lookup_warn_src(warn_src)
+            if code_text != "Unknown Error":
+                self.fault_codes.update({warn_src : time.time()})
+                self.warning_alert_text.buffer.add(code_text)
+
+        current_time = time.time()
+        stale_warnings = [code for code, timestamp in self.fault_codes.items() if current_time - timestamp > 1]
+        for code in stale_warnings:
+            self.warning_alert_text.buffer.discard(self.lookup_warn_src(code))
+            del self.fault_codes[code]
 
         # Handle warning display:
         # Step 1: determine if a warning should be added or removed
@@ -1433,7 +1448,6 @@ class Dashboard(QWidget):
         if coolant > 220 and self.warnings[0] == 0:
             self.warning_alert_text.buffer.add("Coolant Hot")
             self.warnings[0] = 1
-            self.warning_alert_background.setColor(QColor(209, 48, 27))
             self.coolant_label.setStyleSheet(f"""
                                      color: rgb(255, 20, 20);
                                      background-color: {self.black_color};
@@ -1456,7 +1470,6 @@ class Dashboard(QWidget):
         if (oil_pressure < 0.005*rpm and oil_pressure < 60) and self.warnings[1] == 0:
             self.warning_alert_text.buffer.add("Oil PSI Low")
             self.warnings[1] = 1
-            self.warning_alert_background.setColor(QColor(209, 48, 27))
             self.oil_label.setStyleSheet(f"""
                                      color: rgb(255, 20, 20);
                                      background-color: {self.black_color};
@@ -1471,17 +1484,19 @@ class Dashboard(QWidget):
                                      border: 2px solid {self.white_color};
                                      """)
         # Fuel pressure
-        if fuel < 35 and rpm > 0 and self.warnings[2] == 0:
+        #if fuel < 35 and rpm > 0 and self.warnings[2] == 0:
+        if fuel < 35 and rpm > 0:
             self.warning_alert_text.buffer.add("Fuel PSI Low")
-            self.warnings[2] = 1
+            #self.warnings[2] = 1
             self.fuel_label.setStyleSheet(f"""
                                      color: rgb(255, 255, 20);
                                      background-color: {self.black_color};
                                      border: 2px solid rgb(255, 255, 20);
                                      """)
-        elif self.warnings[2] == 1 and fuel >= 40:
+        #elif self.warnings[2] == 1 and fuel >= 40:
+        elif fuel >= 40:
             self.warning_alert_text.buffer.discard("Fuel PSI Low")
-            self.warnings[2] = 0
+            #self.warnings[2] = 0
             self.fuel_label.setStyleSheet(f"""
                                      color: {self.white_color};
                                      background-color: {self.black_color};
@@ -1489,17 +1504,19 @@ class Dashboard(QWidget):
                                      """)
         # Battery warning. Checks for < 10V while cranking and < 12.7 while engine not running
             # v Cranking: RPM between 1 and 1000 v              v Running or sitting with engine off: RPM == 0 or RPM > 1000 v
-        if battery < 12.7 and self.warnings[3] == 0:
+        #if battery < 12.7 and self.warnings[3] == 0:
+        if battery < 12.7:
             self.warning_alert_text.buffer.add("Battery Low")
-            self.warnings[3] = 1
+            #self.warnings[3] = 1
             self.battery_label.setStyleSheet(f"""
                                      color: rgb(255, 255, 20);
                                      background-color: {self.black_color};
                                      border: 2px solid rgb(255, 255, 20);
                                      """)
-        elif self.warnings[3] == 1 and battery >= 12.8:
+        #elif self.warnings[3] == 1 and battery >= 12.8:
+        elif battery >= 12.8:
             self.warning_alert_text.buffer.discard("Battery Low")
-            self.warnings[3] = 0
+            #self.warnings[3] = 0
             self.battery_label.setStyleSheet(f"""
                                      color: {self.white_color};
                                      background-color: {self.black_color};
@@ -1508,7 +1525,8 @@ class Dashboard(QWidget):
         
         if self.warnings[0] == 0 and self.warnings[1] == 0:
             self.warning_alert_background.setColor(QColor(189, 172, 23))
-
+        else:
+            self.warning_alert_background.setColor(QColor(209, 48, 27))
 
         if self.warning_alert_text.buffer:
             if not self.warning_alert_text.shown:
@@ -1524,6 +1542,44 @@ class Dashboard(QWidget):
             self.warning_alert_text.hide()
             self.warning_alert_text.shown = False
             
+    def lookup_warn_src(self, enum:int):
+        fault_codes = {
+                0: "None",
+            # 1 - 12 are warnings, some already handled via alert bits
+                7: "IAT Warn",
+                9: "LO2 Warn",
+                12: "Eng Speed Warn",
+            # The rest are diagnostic faults
+                13: "MAP Fault",
+                14: "EOP Fault",
+                15: "Coolant Temp Fault",
+                16: "Fuel Pres. Fault",
+                18: "IAT Fault",
+                #19: "Gear Sensor Fault",
+                24: "LO2 B1 Fault",
+                #25: "LO2 B2 Fault",
+                27: "APPS Fault",
+                28: "TPS Fault",
+                29: "ETB Servo Pos B1 Fault",
+                30: "ETB Servo Pos B2 Fault",
+                35: "Fuel Closed Loop Fault",
+                36: "ETB Servo B1 Fault",
+                37: "ETB Servo B2 Fault",
+                44: "Fuel Prim. Cyl 1 Fault",
+                45: "Fuel Prim. Cyl 2 Fault",
+                46: "Fuel Prim. Cyl 3 Fault",
+                47: "Fuel Prim. Cyl 4 Fault",
+                68: "CAN 1 Fault",
+                69: "CAN 2 Fault",
+                70: "CAN 3 Fault",
+                72: "Engine Speed Ref Fault",
+                73: "GPS Fault",
+        }
+
+        # Included only expected relevant diagnostics, so "Unknown Error" is reported if
+        # the error is unexpected
+        return fault_codes.get(enum, "Unknown Error")
+
 
     # Function to show the alert box with inputted information. If this function is called outside of the main event loop,
     # the alert will never disappear. Use self.pending_setting_message instead
@@ -1538,6 +1594,28 @@ class Dashboard(QWidget):
         if pending is not None and len(pending) == 4:
             self.show_alert(pending[0], pending[1], pending[2], pending[3])
             self.pending_setting_message = None
+        elif self.canObject.get("P2C_Message_No", 0) > self.p2c_message_no:
+            self.p2c_message_no = self.canObject.get("P2C_Message_No", 0)
+            vals = {k: self.canObject.get(k) for k in ("P2C_Color", "P2C_Duration", "P2C_Line1", "P2C_Line2")}
+            match vals["P2C_Color"]:
+                case 1:
+                    color = "rgb(240,64,64)"
+                case 2:
+                    color = "rgb(117,180,224)"
+                case 3:
+                    color = "rgb(81,224,143)"
+                case 4:
+                    color = "rgb(245,221,81)"
+                case _:
+                    color = "rgb(255,255,255)"
+            if vals["P2C_Duration"] > 0:
+                self.show_alert(self.ascii_int_to_str(vals["P2C_Line1"]), self.ascii_int_to_str(vals["P2C_Line2"]), color, vals["P2C_Duration"]*1000)
+    def ascii_int_to_str(self, input):
+        result = ""
+        for i in range(0,8):
+            result = chr(input&0xFF) + result
+            input = input>>8
+        return result
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_S:

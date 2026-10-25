@@ -413,7 +413,7 @@ void loop() {
         unpack_TelemetryFrame(rxMsg.data);
         motor_last_seen = millis();
         break;
-      case 0x300:
+      case 0x242:
         mode = static_cast<RWSMode>(rxMsg.data[0]);
         fixed_gain = static_cast<int8_t>(rxMsg.data[1]);
         break;

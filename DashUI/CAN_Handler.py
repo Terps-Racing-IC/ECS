@@ -81,8 +81,8 @@ class CanCommon(QObject):
                 ],
                 is_extended_id=False
             )
-            msg_300 = can.Message(
-                arbitration_id=0x300,
+            msg_242 = can.Message(
+                arbitration_id=0x242,
                 data=[
                     self.values.get("RWS_Mode", 0) & 0xFF,
                     self.values.get("RWS_Fixed_Gain", 0) & 0xFF
@@ -92,7 +92,7 @@ class CanCommon(QObject):
             try:
                 self.bus.send(msg_240)
                 self.bus.send(msg_241)
-                self.bus.send(msg_300)
+                self.bus.send(msg_242)
                 self.values.update({"BusOut":1})
             except can.CanError:
                 self.values.update({"BusOut":0})
@@ -222,7 +222,23 @@ class CanCommon(QObject):
                         "Trans_Slip_warn" : int.from_bytes(message.data[6:7], "big")&0b10000000 # Triggered if RPM too much relatiev to output
                     }
                     self.update(parsed)
-
+                case 0x940: # Pit2Car Line 1
+                    parsed = {
+                        "P2C_Line1" : int.from_bytes(message.data, "little")
+                    }
+                    self.update(parsed)
+                case 0x941: # Pit2Car Line 2
+                    parsed = {
+                        "P2C_Line2" : int.from_bytes(message.data, "little")
+                    }
+                    self.update(parsed)
+                case 0x942: # Pit2Car Metadata
+                    parsed = {
+                        "P2C_Message_No": int.from_bytes(message.data[0:2], "little"),
+                        "P2C_Color": int.from_bytes(message.data[2:3], "little"),
+                        "P2C_Duration": int.from_bytes(message.data[3:5], "little") # in 0.1s intervals
+                    }
+                    self.update(parsed)
                 case _: continue            # Default case, do nothing
 
 
