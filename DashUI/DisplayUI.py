@@ -1067,7 +1067,7 @@ class Dashboard(QWidget):
         presets = LedController.LedPresets
         can = self.canObject
         # Cache CAN values for this function. Lots of these are reused
-        vals = {k: can.get(k) for k in ("RPM","Oil","Coolant","Battery","Fuel","Neutral","Speed","AeroMode","TC","WSRR","WSRL","WSFR","WSFL","TC_Comp", "TC_Cut","Brightness")}
+        vals = {k: can.get(k) for k in ("RPM","Oil","Coolant","Battery","Fuel","Neutral","Speed","AeroMode","TC","WSRR","WSRL","WSFR","WSFL","TC_Comp", "TC_Cut","Brightness","Fuel_State")}
         controller = self.ledController
 
         rpm = vals["RPM"]
@@ -1099,6 +1099,7 @@ class Dashboard(QWidget):
             ((vals["Neutral"]==1 and vals["Speed"] > 3), all_row, presets.ALERT_NEUTRAL_DYNAMIC),
             ((vals["AeroMode"]==2), [2], presets.ALERT_LOWDRAG),
             ((vals["TC_Comp"] > 1  or vals["TC_Cut"] != 0), bottom_row, presets.ALERT_TC),
+            ((vals["Fuel_State"] == 0), bottom_row, presets.ALERT_TC),
             #((vals["TC"] < 11 and (slipL > (vals["TC"]*0.01 + 1)) and (slipR > (vals["TC"]*0.01 + 1))), bottom_row, presets.ALERT_TC)
         ]
 
@@ -1428,6 +1429,7 @@ class Dashboard(QWidget):
         rpm = can.get("RPM")
         fuel = can.get("Fuel")
         battery = can.get("Battery")
+        run_switch = can.get("Fuel_State") == 1
         warn_src = can.get("Warn_SRC")
         if warn_src != 0:
             code_text = self.lookup_warn_src(warn_src)
@@ -1522,6 +1524,11 @@ class Dashboard(QWidget):
                                      background-color: {self.black_color};
                                      border: 2px solid {self.white_color};
                                      """)
+
+        if not run_switch:
+            self.warning_alert_text.buffer.add("Ignition Off")
+        elif run_switch:
+            self.warning_alert_text.buffer.discard("Ignition Off")
         
         if self.warnings[0] == 0 and self.warnings[1] == 0:
             self.warning_alert_background.setColor(QColor(189, 172, 23))

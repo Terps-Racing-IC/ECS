@@ -161,7 +161,9 @@ class CanCommon(QObject):
                 
                 case 0x64D:
                     parsed = {
-                        "Gear": (lambda x: x - 16 if x & 8 else x)(message.data[6] & 0x0F)
+                        "Fuel_State": int.from_bytes(message.data[3:4], "big")&0b00001111,
+                        "Gear": (lambda x: x - 16 if x & 8 else x)(message.data[6] & 0x0F),
+                        "Eng_Speed_Lim_State": int.from_bytes(message.data[7:8], "big")
                     }
                     self.update(parsed)
                 case 0x64E:
