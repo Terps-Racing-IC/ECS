@@ -1487,7 +1487,7 @@ class Dashboard(QWidget):
                                      """)
         # Fuel pressure
         #if fuel < 35 and rpm > 0 and self.warnings[2] == 0:
-        if fuel < 35 and rpm > 0:
+        if fuel < 35 and rpm > 0 and run_switch:
             self.warning_alert_text.buffer.add("Fuel PSI Low")
             #self.warnings[2] = 1
             self.fuel_label.setStyleSheet(f"""
@@ -1530,10 +1530,12 @@ class Dashboard(QWidget):
         elif run_switch:
             self.warning_alert_text.buffer.discard("Ignition Off")
         
-        if self.warnings[0] == 0 and self.warnings[1] == 0:
-            self.warning_alert_background.setColor(QColor(189, 172, 23))
-        else:
+        if self.warnings[0] == 1 and self.warnings[1] == 1:
             self.warning_alert_background.setColor(QColor(209, 48, 27))
+        elif not run_switch:
+            self.warning_alert_background.setColor(QColor(215, 50, 200))
+        else:
+            self.warning_alert_background.setColor(QColor(189, 172, 23))
 
         if self.warning_alert_text.buffer:
             if not self.warning_alert_text.shown:
